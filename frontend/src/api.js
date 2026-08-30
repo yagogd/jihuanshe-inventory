@@ -45,6 +45,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  listShipments: () => request('/shipments'),
+  getShipment: (id) => request('/shipments/' + id),
+  createShipment: (body) =>
+    request('/shipments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  updateShipment: (id, body) =>
+    request('/shipments/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)

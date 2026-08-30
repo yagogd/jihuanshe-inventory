@@ -51,6 +51,7 @@ def _migrate() -> None:
     additions = {
         "express_company": "VARCHAR",
         "express_tracking": "VARCHAR",
+        "shipment_id": "VARCHAR",
     }
     with engine.begin() as conn:
         for name, ddl_type in additions.items():

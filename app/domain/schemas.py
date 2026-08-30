@@ -5,7 +5,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.domain.enums import ItemOrigin, OrderStatus
+from app.domain.enums import (
+    AllocationMethod,
+    ItemOrigin,
+    OrderStatus,
+    ShipmentCostType,
+    ShipmentStatus,
+)
 
 
 class OrderItemIn(BaseModel):
@@ -89,6 +95,34 @@ class SettingsIn(BaseModel):
 
 class OrderStatusIn(BaseModel):
     status: OrderStatus
+
+
+class ShipmentCostIn(BaseModel):
+    type: ShipmentCostType
+    amount_eur_cents: int = 0
+    method: AllocationMethod = AllocationMethod.BY_VALUE
+
+
+class ShipmentCostOut(ShipmentCostIn):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+
+
+class ShipmentIn(BaseModel):
+    status: ShipmentStatus | None = None
+    order_ids: list[str] = []
+    costs: list[ShipmentCostIn] = []
+
+
+class ShipmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    status: ShipmentStatus
+    created_at: datetime
+    costs: list[ShipmentCostOut]
+    orders: list[OrderOut]
 
 
 class ImportStatusOut(BaseModel):

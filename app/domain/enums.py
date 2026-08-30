@@ -15,3 +15,22 @@ class ItemOrigin(str, Enum):
     SELLER_GIFT = "SELLER_GIFT"
     BULK = "BULK"
     ADJUSTMENT = "ADJUSTMENT"
+
+
+class ShipmentStatus(str, Enum):
+    PREPARING = "PREPARING"
+    SHIPPED = "SHIPPED"
+    RECEIVED = "RECEIVED"
+
+
+class ShipmentCostType(str, Enum):
+    INTERNATIONAL = "INTERNATIONAL"
+    INSURANCE = "INSURANCE"
+    CUSTOMS = "CUSTOMS"
+    OTHER = "OTHER"
+
+
+class AllocationMethod(str, Enum):
+    BY_VALUE = "BY_VALUE"
+    BY_QUANTITY = "BY_QUANTITY"
+    MANUAL = "MANUAL"

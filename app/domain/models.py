@@ -14,7 +14,13 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
-from app.domain.enums import ItemOrigin, OrderStatus
+from app.domain.enums import (
+    AllocationMethod,
+    ItemOrigin,
+    OrderStatus,
+    ShipmentCostType,
+    ShipmentStatus,
+)
 
 
 def _uuid() -> str:
@@ -63,6 +69,11 @@ class Order(Base):
     )
     raw_capture_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    shipment_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("shipments.id"), nullable=True, index=True
+    )
+    shipment: Mapped["Shipment | None"] = relationship(back_populates="orders")
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -103,3 +114,38 @@ class OrderItem(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
 
     order: Mapped["Order"] = relationship(back_populates="items")
+
+
+class Shipment(Base):
+    __tablename__ = "shipments"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    status: Mapped[ShipmentStatus] = mapped_column(
+        SAEnum(ShipmentStatus, native_enum=False), default=ShipmentStatus.PREPARING
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    costs: Mapped[list["ShipmentCost"]] = relationship(
+        back_populates="shipment", cascade="all, delete-orphan"
+    )
+    orders: Mapped[list["Order"]] = relationship(back_populates="shipment")
+
+
+class ShipmentCost(Base):
+    __tablename__ = "shipment_costs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    shipment_id: Mapped[str] = mapped_column(String(36), ForeignKey("shipments.id"), index=True)
+
+    type: Mapped[ShipmentCostType] = mapped_column(
+        SAEnum(ShipmentCostType, native_enum=False)
+    )
+    amount_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    method: Mapped[AllocationMethod] = mapped_column(
+        SAEnum(AllocationMethod, native_enum=False), default=AllocationMethod.BY_VALUE
+    )
+
+    shipment: Mapped["Shipment"] = relationship(back_populates="costs")
