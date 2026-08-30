@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from app.domain.enums import (
     AllocationMethod,
     ItemOrigin,
+    ListingStatus,
     MovementKind,
     OrderStatus,
     ShipmentCostType,
@@ -190,6 +191,49 @@ class MovementIn(BaseModel):
 
 class SplitIn(BaseModel):
     quantity: int
+
+
+class ListingIn(BaseModel):
+    lot_id: str
+    quantity: int
+    unit_price_eur_cents: int
+
+
+class SaleIn(BaseModel):
+    quantity: int
+    unit_price_eur_cents: int
+    fees_eur_cents: int = 0
+
+
+class ListingOut(BaseModel):
+    id: str
+    lot_id: str
+    quantity: int
+    unit_price_eur_cents: int
+    status: ListingStatus
+    created_at: datetime
+    name: str
+    set_code: str | None = None
+    collector_number: str | None = None
+    image_path: str | None = None
+    available: int
+
+
+class SaleOut(BaseModel):
+    id: str
+    lot_id: str
+    quantity: int
+    unit_price_eur_cents: int
+    fees_eur_cents: int
+    landed_unit_eur_cents: int
+    sold_at: datetime
+    name: str
+    set_code: str | None = None
+    collector_number: str | None = None
+    revenue_eur_cents: int
+    cost_eur_cents: int
+    profit_eur_cents: int
+    roi_pct: float
 
 
 class ImportStatusOut(BaseModel):

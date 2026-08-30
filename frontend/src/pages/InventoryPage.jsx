@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { api } from '../api.js'
+import { api, fen2yuan, yuan2fen } from '../api.js'
 
 export default function InventoryPage() {
   const [lots, setLots] = useState(null)
@@ -24,6 +24,21 @@ export default function InventoryPage() {
     try {
       if (kind === 'split') await api.splitLot(lot.id, quantity)
       else await api.addLotMovement(lot.id, kind, quantity)
+      load()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
+  async function sell(lot) {
+    const qty = window.prompt(`Vender cantidad (disponible: ${lot.available})`, '1')
+    if (qty == null) return
+    const price = window.prompt('Precio de venta por unidad (€)', '')
+    if (price == null) return
+    const fees = window.prompt('Comisiones/fees totales (€)', '0')
+    setError(null)
+    try {
+      await api.sellLot(lot.id, parseInt(qty, 10) || 1, yuan2fen(price), yuan2fen(fees || '0'))
       load()
     } catch (e) {
       setError(e.message)
@@ -98,7 +113,7 @@ export default function InventoryPage() {
               </td>
               <td className="muted">{lot.quantity}</td>
               <td>
-                <button className="secondary" onClick={() => act(lot, 'SELL', 'Vender')}>
+                <button className="secondary" onClick={() => sell(lot)}>
                   Vender
                 </button>{' '}
                 <button className="secondary" onClick={() => act(lot, 'GRADE', 'Grading')}>

@@ -42,3 +42,9 @@ class MovementKind(str, Enum):
     GRADE = "GRADE"
     SPLIT_OUT = "SPLIT_OUT"
     SPLIT_IN = "SPLIT_IN"
+
+
+class ListingStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    SOLD = "SOLD"
+    REMOVED = "REMOVED"

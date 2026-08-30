@@ -13,10 +13,13 @@ from app.domain.inventory import (
     split_lot,
 )
 from app.domain.models import InventoryLot, OrderItem
+from app.domain.sales import sale_to_dict, sell_lot
 from app.domain.schemas import (
     InventoryLotDetailOut,
     InventoryLotOut,
     MovementIn,
+    SaleIn,
+    SaleOut,
     SplitIn,
 )
 
@@ -97,3 +100,13 @@ def move(lot_id: str, payload: MovementIn, db: Session = Depends(get_db)) -> dic
     except InventoryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return lot_to_dict(lot)
+
+
+@router.post("/{lot_id}/sell", response_model=SaleOut)
+def sell(lot_id: str, payload: SaleIn, db: Session = Depends(get_db)) -> dict:
+    lot = _load_lot(lot_id, db)
+    try:
+        sale = sell_lot(db, lot, payload.quantity, payload.unit_price_eur_cents, payload.fees_eur_cents)
+    except InventoryError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return sale_to_dict(sale)

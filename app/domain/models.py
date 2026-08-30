@@ -17,6 +17,7 @@ from app.db import Base
 from app.domain.enums import (
     AllocationMethod,
     ItemOrigin,
+    ListingStatus,
     MovementKind,
     OrderStatus,
     ShipmentCostType,
@@ -173,6 +174,9 @@ class InventoryLot(Base):
     movements: Mapped[list["LotMovement"]] = relationship(
         back_populates="lot", cascade="all, delete-orphan", order_by="LotMovement.created_at"
     )
+    listings: Mapped[list["Listing"]] = relationship(
+        back_populates="lot", cascade="all, delete-orphan"
+    )
 
 
 class LotMovement(Base):
@@ -185,3 +189,33 @@ class LotMovement(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     lot: Mapped["InventoryLot"] = relationship(back_populates="movements")
+
+
+class Listing(Base):
+    __tablename__ = "listings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[ListingStatus] = mapped_column(
+        SAEnum(ListingStatus, native_enum=False), default=ListingStatus.ACTIVE
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    lot: Mapped["InventoryLot"] = relationship(back_populates="listings")
+
+
+class Sale(Base):
+    __tablename__ = "sales"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    fees_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    landed_unit_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    landed_snapshot_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sold_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    lot: Mapped["InventoryLot"] = relationship()

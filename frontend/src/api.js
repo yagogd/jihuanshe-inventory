@@ -81,6 +81,31 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ kind, quantity }),
     }),
+  sellLot: (id, quantity, unitPriceCents, feesCents) =>
+    request('/inventory/' + id + '/sell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        quantity,
+        unit_price_eur_cents: unitPriceCents,
+        fees_eur_cents: feesCents || 0,
+      }),
+    }),
+  listListings: () => request('/listings'),
+  createListing: (body) =>
+    request('/listings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  sellListing: (id, body) =>
+    request('/listings/' + id + '/sell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  removeListing: (id) => request('/listings/' + id + '/remove', { method: 'POST' }),
+  listSales: () => request('/sales'),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)
