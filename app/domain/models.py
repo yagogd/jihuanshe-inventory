@@ -9,9 +9,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, select
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 
 from app.db import Base
 from app.domain.enums import (
@@ -88,6 +88,22 @@ class Order(Base):
         back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.position"
     )
 
+    @property
+    def has_sales(self) -> bool:
+        session = object_session(self)
+        if session is None:
+            return False
+        return (
+            session.scalar(
+                select(Sale.id)
+                .join(InventoryLot, Sale.lot_id == InventoryLot.id)
+                .join(OrderItem, InventoryLot.order_item_id == OrderItem.id)
+                .where(OrderItem.order_id == self.id)
+                .limit(1)
+            )
+            is not None
+        )
+
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -140,6 +156,23 @@ class Shipment(Base):
         back_populates="shipment", cascade="all, delete-orphan"
     )
     orders: Mapped[list["Order"]] = relationship(back_populates="shipment")
+
+    @property
+    def has_sales(self) -> bool:
+        session = object_session(self)
+        if session is None:
+            return False
+        return (
+            session.scalar(
+                select(Sale.id)
+                .join(InventoryLot, Sale.lot_id == InventoryLot.id)
+                .join(OrderItem, InventoryLot.order_item_id == OrderItem.id)
+                .join(Order, OrderItem.order_id == Order.id)
+                .where(Order.shipment_id == self.id)
+                .limit(1)
+            )
+            is not None
+        )
 
 
 class ShipmentCost(Base):

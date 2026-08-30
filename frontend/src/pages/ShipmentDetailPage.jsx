@@ -93,6 +93,12 @@ export default function ShipmentDetailPage({ id }) {
       <div className="card">
         {error && <div className="err">{error}</div>}
         {saved && <div className="ok">Cambios guardados ✓</div>}
+        {shipment.has_sales && (
+          <div className="warn" style={{ marginTop: 8 }}>
+            Este envío tiene ventas registradas. Recalcular sus costes no altera el beneficio
+            ya calculado de ventas pasadas.
+          </div>
+        )}
         <div className="row" style={{ marginTop: 12 }}>
           <div className="field">
             <label>Estado</label>

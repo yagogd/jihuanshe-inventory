@@ -7,6 +7,7 @@ import ShipmentsPage from './pages/ShipmentsPage.jsx'
 import ShipmentDetailPage from './pages/ShipmentDetailPage.jsx'
 import InventoryPage from './pages/InventoryPage.jsx'
 import SalesPage from './pages/SalesPage.jsx'
+import OverviewPage from './pages/OverviewPage.jsx'
 
 function useHash() {
   const [hash, setHash] = useState(window.location.hash)
@@ -29,6 +30,8 @@ export default function App() {
     view = <InventoryPage />
   } else if (hash === '#/sales') {
     view = <SalesPage />
+  } else if (hash === '#/overview') {
+    view = <OverviewPage />
   } else if (hash.startsWith('#/orders/')) {
     view = <OrderDetailPage id={hash.slice('#/orders/'.length)} />
   } else if (hash === '#/orders') {
@@ -39,6 +42,7 @@ export default function App() {
   return (
     <div className="app">
       <nav>
+        <a href="#/overview">Resumen</a>
         <a href="#/">Importar</a>
         <a href="#/orders">Órdenes</a>
         <a href="#/shipments">Envíos</a>

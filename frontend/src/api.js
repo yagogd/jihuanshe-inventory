@@ -106,6 +106,7 @@ export const api = {
     }),
   removeListing: (id) => request('/listings/' + id + '/remove', { method: 'POST' }),
   listSales: () => request('/sales'),
+  getOverview: () => request('/overview'),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)

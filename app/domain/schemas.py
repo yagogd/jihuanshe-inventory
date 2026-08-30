@@ -81,6 +81,7 @@ class OrderOut(BaseModel):
     status: OrderStatus
     items: list[OrderItemOut]
     created_at: datetime
+    has_sales: bool = False
 
 
 class SettingsOut(BaseModel):
@@ -127,6 +128,7 @@ class ShipmentOut(BaseModel):
     created_at: datetime
     costs: list[ShipmentCostOut]
     orders: list[OrderOut]
+    has_sales: bool = False
 
 
 class LandedItemOut(BaseModel):
@@ -230,6 +232,18 @@ class SaleOut(BaseModel):
     name: str
     set_code: str | None = None
     collector_number: str | None = None
+    revenue_eur_cents: int
+    cost_eur_cents: int
+    profit_eur_cents: int
+    roi_pct: float
+
+
+class OverviewOut(BaseModel):
+    orders_count: int
+    invested_eur_cents: int
+    inventory_units: int
+    inventory_value_eur_cents: int
+    sold_units: int
     revenue_eur_cents: int
     cost_eur_cents: int
     profit_eur_cents: int

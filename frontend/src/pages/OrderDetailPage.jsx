@@ -108,6 +108,12 @@ export default function OrderDetailPage({ id }) {
     <h1>Editar orden</h1>
     <div className="card">
       {error && <div className="err">{error}</div>}{saved && <div className="ok">Cambios guardados ✓</div>}
+      {order.has_sales && (
+        <div className="warn" style={{ marginTop: 8 }}>
+          Esta orden tiene ventas registradas. Los cambios aquí no alteran el beneficio ya
+          calculado de ventas pasadas.
+        </div>
+      )}
       <div className="row" style={{ marginTop: 12 }}>
         <Field label="Nº de pedido" value={form.jihuanshe_order_id} set={(value) => setForm({ ...form, jihuanshe_order_id: value })} />
         <Field label="Vendedor" value={form.seller} set={(value) => setForm({ ...form, seller: value })} />

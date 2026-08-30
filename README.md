@@ -61,4 +61,4 @@ La base de datos, las imágenes recortadas y los dumps XML se guardan en `data/`
 
 ## Estado
 
-Actualmente están implementadas las fases 0–6 del plan: extracción ADB, revisión, persistencia, edición de órdenes (origen, ítems manuales, gift/bulk) y ajustes de negocio editables. Consulta [PLAN.md](PLAN.md) para el roadmap completo.
+Actualmente están implementadas todas las fases del plan (0–12): extracción ADB, revisión, persistencia, edición y ajustes, estados de orden, envíos CN→ES, motor de costes (landed cost), inventario con lotes, listados/ventas con beneficio y ROI, y pantalla de resumen. Consulta [PLAN.md](PLAN.md) para el roadmap completo.
