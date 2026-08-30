@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
 const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
+const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
 
 function newItem() {
   return {
@@ -87,6 +88,14 @@ export default function OrderDetailPage({ id }) {
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
+  async function changeStatus(status) {
+    setError(null)
+    try {
+      const updated = await api.setOrderStatus(id, status)
+      setOrder(updated); setForm(toForm(updated))
+    } catch (e) { setError(e.message) }
+  }
+
   if (!order || !form) return error ? <div className="err">{error}</div> : <div className="muted">Cargando…</div>
 
   return <div>
@@ -104,7 +113,19 @@ export default function OrderDetailPage({ id }) {
         <Field label="Total pagado ¥" value={form.total_paid} set={(value) => setForm({ ...form, total_paid: value })} />
         <Field label="FX CNY→EUR" value={form.fx_cny_eur} set={(value) => setForm({ ...form, fx_cny_eur: value })} />
       </div>
-      <div className="muted" style={{ marginTop: 12 }}>Estado: {order.status} · ID: {order.id}</div>
+      <div className="row" style={{ marginTop: 12 }}>
+        <div className="field">
+          <label>Estado</label>
+          <select value={order.status} onChange={(e) => changeStatus(e.target.value)}>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+        <span className="muted">ID: {order.id}</span>
+      </div>
     </div>
     <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Origen</th><th>Promo</th><th>Coste</th><th></th></tr></thead>
       <tbody>{form.items.map((item, index) => <tr key={item.id || index}>

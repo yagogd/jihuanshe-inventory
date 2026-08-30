@@ -18,8 +18,14 @@ async function request(path, options) {
 export const api = {
   status: () => request('/import/status'),
   previewAuto: () => request('/import/preview?auto=true', { method: 'POST' }),
-  listOrders: () => request('/orders'),
+  listOrders: (status) => request('/orders' + (status ? '?status=' + encodeURIComponent(status) : '')),
   getOrder: (id) => request('/orders/' + id),
+  setOrderStatus: (id, status) =>
+    request('/orders/' + id + '/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    }),
   updateOrder: (id, body) =>
     request('/orders/' + id, {
       method: 'PUT',

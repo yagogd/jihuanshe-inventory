@@ -87,6 +87,10 @@ class SettingsIn(BaseModel):
     fx_cny_eur: float | None = None
 
 
+class OrderStatusIn(BaseModel):
+    status: OrderStatus
+
+
 class ImportStatusOut(BaseModel):
     available: bool
     detected: bool

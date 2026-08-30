@@ -6,10 +6,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.domain.enums import OrderStatus
 from app.domain.models import Order
 from app.domain.orders import persist_order
 from app.domain.orders import update_order as update_order_data
-from app.domain.schemas import OrderIn, OrderOut
+from app.domain.schemas import OrderIn, OrderOut, OrderStatusIn
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -29,10 +30,13 @@ def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> Order:
 
 
 @router.get("", response_model=list[OrderOut])
-def list_orders(db: Session = Depends(get_db)) -> list[Order]:
-    return list(
-        db.scalars(select(Order).options(selectinload(Order.items)).order_by(Order.created_at.desc()))
-    )
+def list_orders(
+    status: OrderStatus | None = None, db: Session = Depends(get_db)
+) -> list[Order]:
+    stmt = select(Order).options(selectinload(Order.items)).order_by(Order.created_at.desc())
+    if status is not None:
+        stmt = stmt.where(Order.status == status)
+    return list(db.scalars(stmt))
 
 
 @router.get("/{order_id}", response_model=OrderOut)
@@ -42,6 +46,21 @@ def get_order(order_id: str, db: Session = Depends(get_db)) -> Order:
     )
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
+    return order
+
+
+@router.patch("/{order_id}/status", response_model=OrderOut)
+def set_order_status(
+    order_id: str, payload: OrderStatusIn, db: Session = Depends(get_db)
+) -> Order:
+    order = db.scalar(
+        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    order.status = payload.status
+    db.commit()
+    db.refresh(order)
     return order
 
 
