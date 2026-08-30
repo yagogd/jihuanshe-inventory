@@ -1,0 +1,90 @@
+"""SQLAlchemy ORM models.
+
+Money is stored as integer fen (CNY) / cents (EUR) to avoid floating point
+rounding. FX is a rate (float, manually entered). Raw scraper capture is kept
+verbatim in ``raw_capture_json`` plus the dumps themselves under ``data/dumps``.
+"""
+from __future__ import annotations
+
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db import Base
+from app.domain.enums import ItemOrigin, OrderStatus
+
+
+def _uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    jihuanshe_order_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    seller: Mapped[str | None] = mapped_column(String, nullable=True)
+    purchase_date: Mapped[str | None] = mapped_column(String, nullable=True)
+    express_company: Mapped[str | None] = mapped_column(String, nullable=True)
+    express_tracking: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    subtotal_fen: Mapped[int] = mapped_column(Integer, default=0)
+    domestic_shipping_fen: Mapped[int] = mapped_column(Integer, default=0)
+    alipay_fee_fen: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_paid_fen: Mapped[int] = mapped_column(Integer, default=0)
+
+    fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
+    fx_source: Mapped[str] = mapped_column(String, default="manual")
+
+    status: Mapped[OrderStatus] = mapped_column(
+        SAEnum(OrderStatus, native_enum=False), default=OrderStatus.PURCHASED
+    )
+    raw_capture_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    items: Mapped[list["OrderItem"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan", order_by="OrderItem.position"
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    order_id: Mapped[str] = mapped_column(String(36), ForeignKey("orders.id"), index=True)
+
+    external_card_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    raw_name: Mapped[str] = mapped_column(String)
+    normalized_name: Mapped[str] = mapped_column(String)
+
+    game: Mapped[str | None] = mapped_column(String, nullable=True)
+    set_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    collector_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    language: Mapped[str | None] = mapped_column(String, nullable=True)
+    condition: Mapped[str | None] = mapped_column(String, nullable=True)
+    variant: Mapped[str | None] = mapped_column(String, nullable=True)
+    promo: Mapped[bool] = mapped_column(Boolean, default=False)
+    foil: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price_fen: Mapped[int] = mapped_column(Integer, default=0)
+
+    origin: Mapped[ItemOrigin] = mapped_column(
+        SAEnum(ItemOrigin, native_enum=False), default=ItemOrigin.SCRAPED
+    )
+    include_in_allocation: Mapped[bool] = mapped_column(Boolean, default=True)
+    image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+    order: Mapped["Order"] = relationship(back_populates="items")
