@@ -1,7 +1,6 @@
 from pathlib import Path
 
-from app.extractors.uiautomator.parse import parse_window_xml
-from app.extractors.uiautomator.parse import _parse_numbering
+from app.extractors.uiautomator.parse import _parse_numbering, parse_window_xml
 
 
 def test_numbering_discards_decorative_prefix_and_splits_hyphen():

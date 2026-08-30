@@ -61,4 +61,4 @@ La base de datos, las imágenes recortadas y los dumps XML se guardan en `data/`
 
 ## Estado
 
-Actualmente están implementadas las fases 0–5 del plan, junto con edición básica de órdenes guardadas. Consulta [PLAN.md](PLAN.md) para el roadmap completo.
+Actualmente están implementadas las fases 0–6 del plan: extracción ADB, revisión, persistencia, edición de órdenes (origen, ítems manuales, gift/bulk) y ajustes de negocio editables. Consulta [PLAN.md](PLAN.md) para el roadmap completo.

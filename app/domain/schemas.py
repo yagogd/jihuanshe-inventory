@@ -73,6 +73,20 @@ class OrderOut(BaseModel):
     created_at: datetime
 
 
+class SettingsOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    alipay_fee_threshold_fen: int
+    alipay_fee_rate: float
+    fx_cny_eur: float
+
+
+class SettingsIn(BaseModel):
+    alipay_fee_threshold_fen: int | None = None
+    alipay_fee_rate: float | None = None
+    fx_cny_eur: float | None = None
+
+
 class ImportStatusOut(BaseModel):
     available: bool
     detected: bool
@@ -96,6 +110,7 @@ class ImportPreviewOut(BaseModel):
     domestic_shipping_fen: int | None = None
     declared_total_paid_fen: int | None = None
     suggested_alipay_fee_fen: int = 0
+    fx_cny_eur: float = 0.13
     items: list[OrderItemIn] = []
     raw_dumps: list[str] = []
     warnings: list[str] = []

@@ -1,6 +1,28 @@
 import React, { useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
+const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
+
+function newItem() {
+  return {
+    raw_name: '',
+    normalized_name: '',
+    game: '',
+    set_code: '',
+    collector_number: '',
+    language: '',
+    condition: '',
+    variant: '',
+    promo: false,
+    foil: false,
+    quantity: 1,
+    unit_price: '0',
+    origin: 'MANUAL',
+    include_in_allocation: true,
+    image_path: null,
+  }
+}
+
 export default function ImportPage() {
   const [status, setStatus] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -30,7 +52,7 @@ export default function ImportPage() {
       express_company: data.express_company || '',
       express_tracking: data.express_tracking || '',
       domestic_shipping: data.domestic_shipping_fen != null ? fen2yuan(data.domestic_shipping_fen) : '0',
-      fx_cny_eur: '0.13',
+      fx_cny_eur: data.fx_cny_eur != null ? String(data.fx_cny_eur) : '0.13',
       total_paid:
         data.declared_total_paid_fen != null ? fen2yuan(data.declared_total_paid_fen) : '',
       items: data.items.map((item) => ({
@@ -61,8 +83,21 @@ export default function ImportPage() {
   function updateItem(index, patch) {
     setForm((prev) => ({
       ...prev,
-      items: prev.items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
+      items: prev.items.map((item, i) => {
+        if (i !== index) return item
+        const next = { ...item, ...patch }
+        if (patch.origin === 'BULK') next.include_in_allocation = false
+        return next
+      }),
     }))
+  }
+
+  function addItem() {
+    setForm((prev) => ({ ...prev, items: [...prev.items, newItem()] }))
+  }
+
+  function removeItem(index) {
+    setForm((prev) => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
   }
 
   async function save() {
@@ -79,7 +114,7 @@ export default function ImportPage() {
         fx_cny_eur: parseFloat(form.fx_cny_eur) || 0,
         total_paid_fen: form.total_paid ? yuan2fen(form.total_paid) : null,
         items: form.items.map((item, index) => ({
-          raw_name: item.raw_name,
+          raw_name: item.raw_name || item.normalized_name,
           normalized_name: item.normalized_name || item.raw_name,
           game: item.game,
           set_code: item.set_code,
@@ -219,7 +254,10 @@ export default function ImportPage() {
                 <th>Precio ¥</th>
                 <th>Set/Nº</th>
                 <th>Variante</th>
+                <th>Origen</th>
                 <th>Promo</th>
+                <th>Coste</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -266,16 +304,52 @@ export default function ImportPage() {
                     />
                   </td>
                   <td>
+                    <select
+                      value={item.origin}
+                      onChange={(e) => updateItem(index, { origin: e.target.value })}
+                    >
+                      {ORIGINS.map((origin) => (
+                        <option key={origin} value={origin}>
+                          {origin}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
                     <input
                       type="checkbox"
                       checked={!!item.promo}
                       onChange={(e) => updateItem(index, { promo: e.target.checked })}
                     />
                   </td>
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={!!item.include_in_allocation}
+                      onChange={(e) =>
+                        updateItem(index, { include_in_allocation: e.target.checked })
+                      }
+                    />
+                  </td>
+                  <td>
+                    <button
+                      className="secondary"
+                      onClick={() => removeItem(index)}
+                      title="Quitar ítem"
+                    >
+                      ×
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+
+          <div className="row" style={{ marginTop: 12 }}>
+            <button className="secondary" onClick={addItem}>
+              Añadir ítem
+            </button>
+          </div>
 
           <div className="totals">
             <div>

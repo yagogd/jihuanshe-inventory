@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.import_ import router as import_router
 from app.api.orders import router as orders_router
+from app.api.settings import router as settings_router
 from app.config import get_settings
 from app.db import init_db
 
@@ -31,6 +32,7 @@ app.add_middleware(
 
 app.include_router(import_router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
+app.include_router(settings_router, prefix="/api")
 
 app.mount("/images", StaticFiles(directory=str(settings.images_dir)), name="images")
 

@@ -1,6 +1,28 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
+const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
+
+function newItem() {
+  return {
+    raw_name: '',
+    normalized_name: '',
+    game: '',
+    set_code: '',
+    collector_number: '',
+    language: '',
+    condition: '',
+    variant: '',
+    promo: false,
+    foil: false,
+    quantity: 1,
+    unit_price: '0',
+    origin: 'MANUAL',
+    include_in_allocation: true,
+    image_path: null,
+  }
+}
+
 function toForm(order) {
   return {
     jihuanshe_order_id: order.jihuanshe_order_id || '', seller: order.seller || '',
@@ -24,7 +46,20 @@ export default function OrderDetailPage({ id }) {
   }, [id])
 
   function updateItem(index, patch) {
-    setForm((current) => ({ ...current, items: current.items.map((item, i) => i === index ? { ...item, ...patch } : item) }))
+    setForm((current) => ({ ...current, items: current.items.map((item, i) => {
+      if (i !== index) return item
+      const next = { ...item, ...patch }
+      if (patch.origin === 'BULK') next.include_in_allocation = false
+      return next
+    }) }))
+  }
+
+  function addItem() {
+    setForm((current) => ({ ...current, items: [...current.items, newItem()] }))
+  }
+
+  function removeItem(index) {
+    setForm((current) => ({ ...current, items: current.items.filter((_, i) => i !== index) }))
   }
 
   async function save() {
@@ -39,7 +74,7 @@ export default function OrderDetailPage({ id }) {
         total_paid_fen: form.total_paid === '' ? null : yuan2fen(form.total_paid),
         fx_cny_eur: parseFloat(form.fx_cny_eur) || 0,
         items: form.items.map((item, index) => ({
-          raw_name: item.raw_name, normalized_name: item.normalized_name || item.raw_name,
+          raw_name: item.raw_name || item.normalized_name, normalized_name: item.normalized_name || item.raw_name,
           game: item.game, set_code: item.set_code || null, collector_number: item.collector_number || null,
           language: item.language, condition: item.condition, variant: item.variant || null,
           promo: !!item.promo, foil: !!item.foil, quantity: parseInt(item.quantity, 10) || 1,
@@ -71,7 +106,7 @@ export default function OrderDetailPage({ id }) {
       </div>
       <div className="muted" style={{ marginTop: 12 }}>Estado: {order.status} · ID: {order.id}</div>
     </div>
-    <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Promo</th></tr></thead>
+    <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Origen</th><th>Promo</th><th>Coste</th><th></th></tr></thead>
       <tbody>{form.items.map((item, index) => <tr key={item.id || index}>
         <td>{item.image_path && <img className="thumb" src={`/images/${item.image_path}`} alt="" />}</td>
         <td><input value={item.normalized_name} title={item.raw_name} onChange={(e) => updateItem(index, { normalized_name: e.target.value })} /></td>
@@ -80,9 +115,15 @@ export default function OrderDetailPage({ id }) {
         <td><input style={{ width: 75 }} value={item.set_code || ''} onChange={(e) => updateItem(index, { set_code: e.target.value })} /></td>
         <td><input style={{ width: 95 }} value={item.collector_number || ''} onChange={(e) => updateItem(index, { collector_number: e.target.value })} /></td>
         <td><input style={{ width: 90 }} value={item.variant || ''} onChange={(e) => updateItem(index, { variant: e.target.value })} /></td>
+        <td><select value={item.origin} onChange={(e) => updateItem(index, { origin: e.target.value })}>{ORIGINS.map((origin) => <option key={origin} value={origin}>{origin}</option>)}</select></td>
         <td><input type="checkbox" checked={!!item.promo} onChange={(e) => updateItem(index, { promo: e.target.checked })} /></td>
+        <td><input type="checkbox" checked={!!item.include_in_allocation} onChange={(e) => updateItem(index, { include_in_allocation: e.target.checked })} /></td>
+        <td><button className="secondary" onClick={() => removeItem(index)} title="Quitar ítem">×</button></td>
       </tr>)}</tbody>
     </table>
+    <div className="row" style={{ marginTop: 12 }}>
+      <button className="secondary" onClick={addItem}>Añadir ítem</button>
+    </div>
     <div className="row" style={{ marginTop: 16 }}><button onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button></div>
   </div>
 }

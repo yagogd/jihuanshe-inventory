@@ -25,6 +25,21 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class AppSettings(Base):
+    """Single-row table of user-editable business settings.
+
+    Environment variables provide the initial seed values; afterwards the row
+    is authoritative and can be edited through the UI without touching env.
+    """
+
+    __tablename__ = "settings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    alipay_fee_threshold_fen: Mapped[int] = mapped_column(Integer, default=20000)
+    alipay_fee_rate: Mapped[float] = mapped_column(Float, default=0.03)
+    fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
+
+
 class Order(Base):
     __tablename__ = "orders"
 

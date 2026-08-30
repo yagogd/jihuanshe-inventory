@@ -20,15 +20,15 @@ def _png(size=(100, 100), color=(255, 0, 0)):
 
 def test_crop_bounds(tmp_path):
     out = tmp_path / "out.jpg"
-    assert crop_bounds(_png(), (10, 10, 60, 60), out) is True
+    assert crop_bounds(_png((100, 200)), (10, 10, 60, 110), out) is True
     assert out.exists()
-    assert Image.open(out).size == (50, 50)
+    assert Image.open(out).size == (50, 100)
 
 
 def test_crop_clamped_to_image(tmp_path):
     out = tmp_path / "out.jpg"
-    assert crop_bounds(_png(), (-5, -5, 500, 500), out) is True
-    assert Image.open(out).size == (100, 100)
+    assert crop_bounds(_png((100, 200)), (-5, -5, 500, 500), out) is True
+    assert Image.open(out).size == (100, 200)
 
 
 def test_crop_empty_returns_false(tmp_path):

@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.config import get_settings
 from app.db import get_db
 from app.domain.models import Order
-from app.domain.orders import persist_order, update_order as update_order_data
+from app.domain.orders import persist_order
+from app.domain.orders import update_order as update_order_data
 from app.domain.schemas import OrderIn, OrderOut
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -25,7 +25,7 @@ def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> Order:
                 status_code=409,
                 detail=f"La orden {payload.jihuanshe_order_id} ya existe (id {existing.id})",
             )
-    return persist_order(db, payload, get_settings())
+    return persist_order(db, payload)
 
 
 @router.get("", response_model=list[OrderOut])
@@ -61,4 +61,4 @@ def update_order(order_id: str, payload: OrderIn, db: Session = Depends(get_db))
         )
         if duplicate is not None:
             raise HTTPException(status_code=409, detail="Ese número de pedido ya está guardado")
-    return update_order_data(db, order, payload, get_settings())
+    return update_order_data(db, order, payload)

@@ -32,6 +32,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  getSettings: () => request('/settings'),
+  updateSettings: (body) =>
+    request('/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)
