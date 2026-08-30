@@ -58,3 +58,4 @@ def _migrate() -> None:
         for name, ddl_type in additions.items():
             if name not in columns:
                 conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {ddl_type}"))
+        conn.execute(text("UPDATE orders SET cost_method = 'BY_VALUE' WHERE cost_method IS NULL"))
