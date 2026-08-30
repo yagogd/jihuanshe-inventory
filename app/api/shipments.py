@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.domain.inventory import receive_shipment
 from app.domain.models import Order, Shipment
 from app.domain.schemas import ShipmentIn, ShipmentOut
 from app.domain.shipments import create_shipment
@@ -59,3 +60,10 @@ def update_shipment(
 ) -> Shipment:
     shipment = _load(shipment_id, db)
     return update_shipment_data(db, shipment, payload)
+
+
+@router.post("/{shipment_id}/receive", response_model=ShipmentOut)
+def receive(shipment_id: str, db: Session = Depends(get_db)) -> Shipment:
+    shipment = _load(shipment_id, db)
+    receive_shipment(db, shipment)
+    return _load(shipment_id, db)

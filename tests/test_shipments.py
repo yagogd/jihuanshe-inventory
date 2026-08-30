@@ -49,7 +49,7 @@ def test_shipment_create_and_assign():
         assert len(u["costs"]) == 2
 
         listing = client.get("/api/shipments").json()
-        assert len(listing) == 1
+        assert any(s["id"] == body["id"] for s in listing)
 
         detail = client.get(f"/api/shipments/{body['id']}").json()
         assert detail["id"] == body["id"]

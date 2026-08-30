@@ -60,6 +60,27 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  receiveShipment: (id) => request('/shipments/' + id + '/receive', { method: 'POST' }),
+  listInventory: (params) => {
+    const qs = new URLSearchParams()
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value !== undefined && value !== null && value !== '') qs.set(key, value)
+    }
+    const s = qs.toString()
+    return request('/inventory' + (s ? '?' + s : ''))
+  },
+  splitLot: (id, quantity) =>
+    request('/inventory/' + id + '/split', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quantity }),
+    }),
+  addLotMovement: (id, kind, quantity) =>
+    request('/inventory/' + id + '/movements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind, quantity }),
+    }),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)

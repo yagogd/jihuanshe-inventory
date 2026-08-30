@@ -74,6 +74,17 @@ export default function ShipmentDetailPage({ id }) {
     })
   }
 
+  async function receive() {
+    setError(null)
+    setSaved(false)
+    try {
+      const updated = await api.receiveShipment(id)
+      setShipment(updated)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   if (!shipment || !costs) return error ? <div className="err">{error}</div> : <div className="muted">Cargando…</div>
 
   return (
@@ -96,6 +107,9 @@ export default function ShipmentDetailPage({ id }) {
               ))}
             </select>
           </div>
+          {shipment.status !== 'RECEIVED' && (
+            <button onClick={receive}>Recibir envío (genera inventario)</button>
+          )}
         </div>
       </div>
 

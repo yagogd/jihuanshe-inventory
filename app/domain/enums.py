@@ -34,3 +34,11 @@ class AllocationMethod(str, Enum):
     BY_VALUE = "BY_VALUE"
     BY_QUANTITY = "BY_QUANTITY"
     MANUAL = "MANUAL"
+
+
+class MovementKind(str, Enum):
+    RECEIVE = "RECEIVE"
+    SELL = "SELL"
+    GRADE = "GRADE"
+    SPLIT_OUT = "SPLIT_OUT"
+    SPLIT_IN = "SPLIT_IN"

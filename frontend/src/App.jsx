@@ -5,6 +5,7 @@ import OrderDetailPage from './pages/OrderDetailPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import ShipmentsPage from './pages/ShipmentsPage.jsx'
 import ShipmentDetailPage from './pages/ShipmentDetailPage.jsx'
+import InventoryPage from './pages/InventoryPage.jsx'
 
 function useHash() {
   const [hash, setHash] = useState(window.location.hash)
@@ -23,6 +24,8 @@ export default function App() {
     view = <ShipmentDetailPage id={hash.slice('#/shipments/'.length)} />
   } else if (hash === '#/shipments') {
     view = <ShipmentsPage />
+  } else if (hash === '#/inventory') {
+    view = <InventoryPage />
   } else if (hash.startsWith('#/orders/')) {
     view = <OrderDetailPage id={hash.slice('#/orders/'.length)} />
   } else if (hash === '#/orders') {
@@ -36,6 +39,7 @@ export default function App() {
         <a href="#/">Importar</a>
         <a href="#/orders">Órdenes</a>
         <a href="#/shipments">Envíos</a>
+        <a href="#/inventory">Inventario</a>
         <a href="#/settings">Ajustes</a>
       </nav>
       {view}

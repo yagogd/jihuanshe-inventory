@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.import_ import router as import_router
+from app.api.inventory import router as inventory_router
 from app.api.orders import router as orders_router
 from app.api.settings import router as settings_router
 from app.api.shipments import router as shipments_router
@@ -35,6 +36,7 @@ app.include_router(import_router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(shipments_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
 
 app.mount("/images", StaticFiles(directory=str(settings.images_dir)), name="images")
 

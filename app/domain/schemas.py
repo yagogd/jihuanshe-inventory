@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from app.domain.enums import (
     AllocationMethod,
     ItemOrigin,
+    MovementKind,
     OrderStatus,
     ShipmentCostType,
     ShipmentStatus,
@@ -148,6 +149,47 @@ class LandedOut(BaseModel):
     fx_cny_eur: float
     items: list[LandedItemOut]
     total_landed_eur_cents: int
+
+
+class MovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    kind: MovementKind
+    delta: int
+    created_at: datetime
+
+
+class InventoryLotOut(BaseModel):
+    id: str
+    order_item_id: str
+    name: str
+    raw_name: str
+    game: str | None = None
+    set_code: str | None = None
+    collector_number: str | None = None
+    condition: str | None = None
+    variant: str | None = None
+    language: str | None = None
+    image_path: str | None = None
+    quantity: int
+    available: int
+    order_id: str
+    seller: str | None = None
+    purchase_date: str | None = None
+
+
+class InventoryLotDetailOut(InventoryLotOut):
+    movements: list[MovementOut]
+
+
+class MovementIn(BaseModel):
+    kind: MovementKind
+    quantity: int
+
+
+class SplitIn(BaseModel):
+    quantity: int
 
 
 class ImportStatusOut(BaseModel):

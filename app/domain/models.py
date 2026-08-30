@@ -17,6 +17,7 @@ from app.db import Base
 from app.domain.enums import (
     AllocationMethod,
     ItemOrigin,
+    MovementKind,
     OrderStatus,
     ShipmentCostType,
     ShipmentStatus,
@@ -117,6 +118,9 @@ class OrderItem(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
 
     order: Mapped["Order"] = relationship(back_populates="items")
+    lots: Mapped[list["InventoryLot"]] = relationship(
+        back_populates="order_item", cascade="all, delete-orphan"
+    )
 
 
 class Shipment(Base):
@@ -152,3 +156,32 @@ class ShipmentCost(Base):
     )
 
     shipment: Mapped["Shipment"] = relationship(back_populates="costs")
+
+
+class InventoryLot(Base):
+    __tablename__ = "inventory_lots"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    order_item_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("order_items.id"), index=True
+    )
+    quantity: Mapped[int] = mapped_column(Integer, default=0)
+    available: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    order_item: Mapped["OrderItem"] = relationship(back_populates="lots")
+    movements: Mapped[list["LotMovement"]] = relationship(
+        back_populates="lot", cascade="all, delete-orphan", order_by="LotMovement.created_at"
+    )
+
+
+class LotMovement(Base):
+    __tablename__ = "lot_movements"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    kind: Mapped[MovementKind] = mapped_column(SAEnum(MovementKind, native_enum=False))
+    delta: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+    lot: Mapped["InventoryLot"] = relationship(back_populates="movements")
