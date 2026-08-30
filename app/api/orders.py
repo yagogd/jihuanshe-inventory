@@ -6,11 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
+from app.domain.costs import compute_order_landed
 from app.domain.enums import OrderStatus
-from app.domain.models import Order
+from app.domain.models import Order, Shipment
 from app.domain.orders import persist_order
 from app.domain.orders import update_order as update_order_data
-from app.domain.schemas import OrderIn, OrderOut, OrderStatusIn
+from app.domain.schemas import LandedOut, OrderIn, OrderOut, OrderStatusIn
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -47,6 +48,27 @@ def get_order(order_id: str, db: Session = Depends(get_db)) -> Order:
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     return order
+
+
+@router.get("/{order_id}/landed", response_model=LandedOut)
+def order_landed(order_id: str, db: Session = Depends(get_db)) -> dict:
+    order = db.scalar(
+        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+    )
+    if order is None:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+    shipment = None
+    if order.shipment_id:
+        shipment = db.scalar(
+            select(Shipment)
+            .options(
+                selectinload(Shipment.costs),
+                selectinload(Shipment.orders).selectinload(Order.items),
+            )
+            .where(Shipment.id == order.shipment_id)
+        )
+    return compute_order_landed(order, shipment)
 
 
 @router.patch("/{order_id}/status", response_model=OrderOut)

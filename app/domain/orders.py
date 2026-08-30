@@ -12,7 +12,7 @@ import json
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.domain.enums import OrderStatus
+from app.domain.enums import AllocationMethod, OrderStatus
 from app.domain.models import AppSettings, Order, OrderItem
 from app.domain.schemas import OrderIn
 from app.domain.settings import get_app_settings
@@ -65,6 +65,7 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
         total_paid_fen=total,
         fx_cny_eur=fx,
         fx_source=payload.fx_source or "manual",
+        cost_method=payload.cost_method or AllocationMethod.BY_VALUE,
         status=OrderStatus.PURCHASED,
     )
 
@@ -143,6 +144,7 @@ def update_order(db: Session, order: Order, payload: OrderIn) -> Order:
     )
     order.fx_cny_eur = fx
     order.fx_source = payload.fx_source or order.fx_source or "manual"
+    order.cost_method = payload.cost_method or order.cost_method or AllocationMethod.BY_VALUE
 
     order.items.clear()
     for position, item in enumerate(payload.items):

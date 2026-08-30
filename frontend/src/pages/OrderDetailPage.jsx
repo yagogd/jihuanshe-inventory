@@ -3,6 +3,7 @@ import { api, fen2yuan, yuan2fen } from '../api.js'
 
 const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
 const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
+const METHODS = ['BY_VALUE', 'BY_QUANTITY', 'MANUAL']
 
 function newItem() {
   return {
@@ -31,6 +32,7 @@ function toForm(order) {
     express_tracking: order.express_tracking || '', domestic_shipping: fen2yuan(order.domestic_shipping_fen),
     alipay_fee: order.alipay_fee_fen == null ? '' : fen2yuan(order.alipay_fee_fen),
     total_paid: fen2yuan(order.total_paid_fen), fx_cny_eur: String(order.fx_cny_eur),
+    cost_method: order.cost_method || 'BY_VALUE',
     items: order.items.map((item) => ({ ...item, unit_price: fen2yuan(item.unit_price_fen) })),
   }
 }
@@ -38,12 +40,14 @@ function toForm(order) {
 export default function OrderDetailPage({ id }) {
   const [order, setOrder] = useState(null)
   const [form, setForm] = useState(null)
+  const [landed, setLanded] = useState(null)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     api.getOrder(id).then((data) => { setOrder(data); setForm(toForm(data)) }).catch((e) => setError(e.message))
+    api.getOrderLanded(id).then(setLanded).catch(() => {})
   }, [id])
 
   function updateItem(index, patch) {
@@ -74,6 +78,7 @@ export default function OrderDetailPage({ id }) {
         alipay_fee_fen: form.alipay_fee === '' ? null : yuan2fen(form.alipay_fee),
         total_paid_fen: form.total_paid === '' ? null : yuan2fen(form.total_paid),
         fx_cny_eur: parseFloat(form.fx_cny_eur) || 0,
+        cost_method: form.cost_method,
         items: form.items.map((item, index) => ({
           raw_name: item.raw_name || item.normalized_name, normalized_name: item.normalized_name || item.raw_name,
           game: item.game, set_code: item.set_code || null, collector_number: item.collector_number || null,
@@ -85,6 +90,7 @@ export default function OrderDetailPage({ id }) {
       }
       const updated = await api.updateOrder(id, payload)
       setOrder(updated); setForm(toForm(updated)); setSaved(true)
+      api.getOrderLanded(id).then(setLanded).catch(() => {})
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
@@ -124,6 +130,19 @@ export default function OrderDetailPage({ id }) {
             ))}
           </select>
         </div>
+        <div className="field">
+          <label>Reparto de costes</label>
+          <select
+            value={form.cost_method}
+            onChange={(e) => setForm({ ...form, cost_method: e.target.value })}
+          >
+            {METHODS.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
+          </select>
+        </div>
         <span className="muted">ID: {order.id}</span>
       </div>
     </div>
@@ -146,6 +165,37 @@ export default function OrderDetailPage({ id }) {
       <button className="secondary" onClick={addItem}>Añadir ítem</button>
     </div>
     <div className="row" style={{ marginTop: 16 }}><button onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button></div>
+
+    {landed && (
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3>Coste aterrizado (FX {landed.fx_cny_eur})</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Ítem</th>
+              <th>Compra €</th>
+              <th>Envío €</th>
+              <th>Total €</th>
+              <th>Unitario €</th>
+            </tr>
+          </thead>
+          <tbody>
+            {landed.items.map((item) => (
+              <tr key={item.item_id}>
+                <td>{item.name}</td>
+                <td>{fen2yuan(item.cny_eur_cents)}</td>
+                <td>{fen2yuan(item.international_cents + item.insurance_cents + item.customs_cents + item.other_cents)}</td>
+                <td>{fen2yuan(item.landed_eur_cents)}</td>
+                <td>{fen2yuan(Math.round(item.landed_eur_cents / item.quantity))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="totals">
+          Total aterrizado: <strong>{fen2yuan(landed.total_landed_eur_cents)} €</strong>
+        </div>
+      </div>
+    )}
   </div>
 }
 

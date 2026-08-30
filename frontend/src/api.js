@@ -20,6 +20,7 @@ export const api = {
   previewAuto: () => request('/import/preview?auto=true', { method: 'POST' }),
   listOrders: (status) => request('/orders' + (status ? '?status=' + encodeURIComponent(status) : '')),
   getOrder: (id) => request('/orders/' + id),
+  getOrderLanded: (id) => request('/orders/' + id + '/landed'),
   setOrderStatus: (id, status) =>
     request('/orders/' + id + '/status', {
       method: 'PATCH',

@@ -52,6 +52,7 @@ class OrderIn(BaseModel):
     total_paid_fen: int | None = None
     fx_cny_eur: float | None = None
     fx_source: str | None = None
+    cost_method: AllocationMethod | None = None
     items: list[OrderItemIn]
     session_id: str | None = None
     raw_dumps: list[str] = []
@@ -74,6 +75,7 @@ class OrderOut(BaseModel):
     total_paid_fen: int
     fx_cny_eur: float
     fx_source: str
+    cost_method: AllocationMethod
     status: OrderStatus
     items: list[OrderItemOut]
     created_at: datetime
@@ -123,6 +125,29 @@ class ShipmentOut(BaseModel):
     created_at: datetime
     costs: list[ShipmentCostOut]
     orders: list[OrderOut]
+
+
+class LandedItemOut(BaseModel):
+    item_id: str
+    name: str
+    quantity: int
+    purchase_cny_fen: int
+    domestic_cny_fen: int
+    alipay_cny_fen: int
+    cny_total_fen: int
+    cny_eur_cents: int
+    international_cents: int
+    insurance_cents: int
+    customs_cents: int
+    other_cents: int
+    landed_eur_cents: int
+
+
+class LandedOut(BaseModel):
+    order_id: str
+    fx_cny_eur: float
+    items: list[LandedItemOut]
+    total_landed_eur_cents: int
 
 
 class ImportStatusOut(BaseModel):

@@ -63,6 +63,9 @@ class Order(Base):
 
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
     fx_source: Mapped[str] = mapped_column(String, default="manual")
+    cost_method: Mapped[AllocationMethod] = mapped_column(
+        SAEnum(AllocationMethod, native_enum=False), default=AllocationMethod.BY_VALUE
+    )
 
     status: Mapped[OrderStatus] = mapped_column(
         SAEnum(OrderStatus, native_enum=False), default=OrderStatus.PURCHASED
