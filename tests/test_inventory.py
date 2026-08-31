@@ -183,3 +183,21 @@ def test_inventory_source_and_foil_filters():
         assert len(foil) == 1
 
 
+def test_scanned_cards_appear_as_pending():
+    with TestClient(app) as client:
+        order_id = _create_order(client, "CartaPendiente", 3)
+
+        lots = client.get("/api/inventory", params={"q": "CartaPendiente"}).json()
+        assert len(lots) == 1
+        assert lots[0]["source"] == "PENDING"
+        assert lots[0]["quantity"] == 3
+        assert lots[0]["available"] == 0
+
+        # after receiving, it stops being pending
+        _receive(client, order_id)
+        lots = client.get("/api/inventory", params={"q": "CartaPendiente"}).json()
+        assert lots[0]["source"] == "RECEIVE"
+        assert lots[0]["available"] == 3
+
+
+

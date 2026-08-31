@@ -1,6 +1,7 @@
 """FastAPI application entrypoint."""
 from __future__ import annotations
 
+import threading
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -23,7 +24,21 @@ from app.db import init_db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    if get_settings().auto_translate:
+        threading.Thread(target=_background_translate, daemon=True).start()
     yield
+
+
+def _background_translate() -> None:
+    """Fill English names for any cards that still lack them (best effort)."""
+    try:
+        from app.db import SessionLocal
+        from app.domain.translate import translate_all
+
+        with SessionLocal() as db:
+            translate_all(db)
+    except Exception:
+        pass
 
 
 settings = get_settings()

@@ -10,6 +10,7 @@ from app.domain.inventory import (
     InventoryError,
     add_manual_lot,
     add_movement,
+    list_inventory_entries,
     lot_to_dict,
     split_lot,
 )
@@ -66,20 +67,8 @@ def list_inventory(
     available_only: bool = False,
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    lots = list(
-        db.scalars(
-            select(InventoryLot)
-            .options(
-                selectinload(InventoryLot.order_item).selectinload(OrderItem.order),
-                selectinload(InventoryLot.card),
-            )
-            .order_by(InventoryLot.created_at.desc())
-        )
-    )
-
     result = []
-    for lot in lots:
-        data = lot_to_dict(lot)
+    for data in list_inventory_entries(db):
         if q:
             needle = q.lower()
             haystack = " ".join(

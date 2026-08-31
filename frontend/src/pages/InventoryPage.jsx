@@ -201,6 +201,7 @@ export default function InventoryPage() {
             <option value="">Todos</option>
             <option value="RECEIVE">Recibido (envío)</option>
             <option value="MANUAL">Manual</option>
+            <option value="PENDING">Pendiente</option>
           </select>
         </div>
         <div className="field">
@@ -313,9 +314,12 @@ export default function InventoryPage() {
                   )}
                 </td>
                 <td>
-                  <a href={`#/cards/${lot.card_id}`}>{lot.name_en || lot.name}</a>
-                  {lot.raw_name && lot.name_en && lot.raw_name !== (lot.name_en || lot.name) && (
-                    <div className="muted" style={{ fontSize: 12 }}>{lot.raw_name}</div>
+                  <a href={`#/cards/${lot.card_id}`}>{lot.name}</a>
+                  {lot.source === 'PENDING' && (
+                    <Badge tone="warn" style={{ marginLeft: 6 }}>Pendiente</Badge>
+                  )}
+                  {lot.name_en && (
+                    <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
                   )}
                 </td>
                 <td className="muted">
@@ -339,15 +343,21 @@ export default function InventoryPage() {
                     : fen2yuan(lot.unit_cost_eur_cents)}
                 </td>
                 <td>
-                  <button className="secondary" onClick={() => openAction(lot, 'sell')}>
-                    Vender
-                  </button>{' '}
-                  <button className="secondary" onClick={() => openAction(lot, 'GRADE')}>
-                    Grading
-                  </button>{' '}
-                  <button className="secondary" onClick={() => openAction(lot, 'split')}>
-                    Dividir
-                  </button>
+                  {lot.source !== 'PENDING' ? (
+                    <>
+                      <button className="secondary" onClick={() => openAction(lot, 'sell')}>
+                        Vender
+                      </button>{' '}
+                      <button className="secondary" onClick={() => openAction(lot, 'GRADE')}>
+                        Grading
+                      </button>{' '}
+                      <button className="secondary" onClick={() => openAction(lot, 'split')}>
+                        Dividir
+                      </button>
+                    </>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
                 </td>
               </tr>
             ))}

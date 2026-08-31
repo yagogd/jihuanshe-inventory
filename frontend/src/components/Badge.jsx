@@ -7,6 +7,6 @@ const TONE = {
   neutral: 'neutral',
 }
 
-export default function Badge({ tone = 'neutral', children }) {
-  return <span className={`badge ${TONE[tone] || 'neutral'}`}>{children}</span>
+export default function Badge({ tone = 'neutral', style, children }) {
+  return <span className={`badge ${TONE[tone] || 'neutral'}`} style={style}>{children}</span>
 }

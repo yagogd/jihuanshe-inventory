@@ -7,12 +7,12 @@ received shipment keep an optional ``order_item_id`` for audit; manual lots
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.domain.cards import resolve_card
 from app.domain.enums import LotSource, MovementKind, ShipmentStatus
 from app.domain.fx import convert_to_eur
-from app.domain.models import InventoryLot, LotMovement, Shipment
+from app.domain.models import InventoryLot, LotMovement, OrderItem, Shipment
 from app.domain.schemas import InventoryLotIn
 
 _MANUAL_KINDS = {MovementKind.SELL, MovementKind.GRADE}
@@ -137,12 +137,9 @@ def lot_to_dict(lot: InventoryLot) -> dict:
     card = lot.card
     item = lot.order_item
 
-    name = card.name_en if card and card.name_en else None
-    if not name and card and card.name_zh:
-        name = card.name_zh
+    name = card.name_zh if card and card.name_zh else None
     if not name and item:
         name = item.normalized_name or item.raw_name
-
     name_en = card.name_en if card else None
     raw_name = card.name_zh if card and card.name_zh else (item.raw_name if item else None)
 
@@ -188,3 +185,69 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         "seller": seller,
         "purchase_date": purchase_date,
     }
+
+
+def pending_item_to_dict(item: OrderItem) -> dict:
+    """Represent an order line that has not been received yet as an inventory row."""
+    card = item.card
+    name_zh = (
+        card.name_zh if card and card.name_zh else (item.normalized_name or item.raw_name)
+    )
+    name_en = card.name_en if card else None
+    fx = item.order.fx_cny_eur if item.order else 0.13
+
+    return {
+        "id": item.id,
+        "order_item_id": item.id,
+        "card_id": item.card_id,
+        "source": "PENDING",
+        "name": name_zh or "(sin nombre)",
+        "name_en": name_en,
+        "raw_name": item.raw_name,
+        "game": card.game if card else item.game,
+        "set_code": card.set_code if card else item.set_code,
+        "collector_number": card.collector_number if card else item.collector_number,
+        "condition": item.condition,
+        "variant": card.variant if card else item.variant,
+        "language": card.language if card else item.language,
+        "foil": card.foil if card else item.foil,
+        "promo": card.promo if card else item.promo,
+        "origin": item.origin.value if item.origin else None,
+        "image_path": (card.image_path if card and card.image_path else item.image_path),
+        "quantity": item.quantity,
+        "available": 0,
+        "unit_cost_eur_cents": round(item.unit_price_fen * fx),
+        "note": None,
+        "order_id": item.order.id if item.order else None,
+        "seller": item.order.seller if item.order else None,
+        "purchase_date": item.order.purchase_date if item.order else None,
+    }
+
+
+def list_inventory_entries(db: Session) -> list[dict]:
+    """Return every card in inventory: received lots, manual lots and pending orders."""
+    lots = list(
+        db.scalars(
+            select(InventoryLot)
+            .options(
+                selectinload(InventoryLot.order_item).selectinload(OrderItem.order),
+                selectinload(InventoryLot.card),
+            )
+        )
+    )
+    entries = [lot_to_dict(lot) for lot in lots]
+
+    received_item_ids = {lot.order_item_id for lot in lots if lot.order_item_id}
+    items = list(
+        db.scalars(
+            select(OrderItem)
+            .options(selectinload(OrderItem.order), selectinload(OrderItem.card))
+            .order_by(OrderItem.position)
+        )
+    )
+    for item in items:
+        if item.id in received_item_ids:
+            continue
+        entries.append(pending_item_to_dict(item))
+
+    return entries
