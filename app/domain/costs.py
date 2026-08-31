@@ -11,15 +11,8 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable
 
-from app.domain.enums import AllocationMethod, ShipmentCostType
-from app.domain.models import Order, OrderItem, Shipment
-
-_TYPE_FIELD = {
-    ShipmentCostType.INTERNATIONAL: "international_cents",
-    ShipmentCostType.INSURANCE: "insurance_cents",
-    ShipmentCostType.CUSTOMS: "customs_cents",
-    ShipmentCostType.OTHER: "other_cents",
-}
+from app.domain.enums import AllocationMethod, Currency
+from app.domain.models import Order, OrderItem, Shipment, ShipmentCost
 
 
 def allocate_largest_remainder(weights: list[int], total: int) -> list[int]:
@@ -50,6 +43,13 @@ def _order_weights(items: Iterable[OrderItem], method: AllocationMethod) -> list
         item.unit_price_fen * item.quantity if item.include_in_allocation else 0
         for item in items
     ]
+
+
+def shipment_cost_eur_cents(cost: ShipmentCost, fx_cny_eur: float) -> int:
+    """Convert a shipment cost line into EUR cents using the shipment FX."""
+    if cost.currency == Currency.EUR:
+        return cost.amount
+    return round(cost.amount * fx_cny_eur)
 
 
 def _shipment_weights(
@@ -93,14 +93,15 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
     else:
         cny_to_eur_allocs = [round(total * order.fx_cny_eur) for total in cny_totals]
 
-    shipment_alloc: dict[ShipmentCostType, list[int]] = {}
+    shipment_alloc: dict[str, list[int]] = {}
     index_by_item: dict[int, int] = {}
     if shipment is not None:
         order_items = [(o, item) for o in shipment.orders for item in o.items]
         index_by_item = {id(item): index for index, (_, item) in enumerate(order_items)}
         for cost in shipment.costs:
             weights = _shipment_weights(order_items, cost.method)
-            shipment_alloc[cost.type] = allocate_largest_remainder(weights, cost.amount_eur_cents)
+            eur = shipment_cost_eur_cents(cost, shipment.fx_cny_eur)
+            shipment_alloc[cost.id] = allocate_largest_remainder(weights, eur)
 
     result_items = []
     total_landed = 0
@@ -110,11 +111,15 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
         alipay = alipay_alloc[position]
         cny_total = purchase + domestic + alipay
 
-        parts = {field: 0 for field in _TYPE_FIELD.values()}
+        alloc_by_category: dict[str, int] = {}
         index = index_by_item.get(id(item))
-        for cost_type, allocs in shipment_alloc.items():
-            parts[_TYPE_FIELD[cost_type]] = allocs[index] if index is not None else 0
-        eur = sum(parts.values())
+        if shipment is not None:
+            for cost in shipment.costs:
+                if index is not None:
+                    amount = shipment_alloc[cost.id][index]
+                    name = cost.category.name if cost.category else "?"
+                    alloc_by_category[name] = alloc_by_category.get(name, 0) + amount
+        eur = sum(alloc_by_category.values())
 
         cny_eur = cny_to_eur_allocs[position]
         landed = cny_eur + eur
@@ -130,10 +135,8 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
                 "alipay_cny_fen": alipay,
                 "cny_total_fen": cny_total,
                 "cny_eur_cents": cny_eur,
-                "international_cents": parts["international_cents"],
-                "insurance_cents": parts["insurance_cents"],
-                "customs_cents": parts["customs_cents"],
-                "other_cents": parts["other_cents"],
+                "shipment_alloc_cents": alloc_by_category,
+                "shipment_eur_cents": eur,
                 "landed_eur_cents": landed,
             }
         )

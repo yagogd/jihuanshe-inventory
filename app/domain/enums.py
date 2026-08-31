@@ -23,11 +23,17 @@ class ShipmentStatus(str, Enum):
     RECEIVED = "RECEIVED"
 
 
-class ShipmentCostType(str, Enum):
-    INTERNATIONAL = "INTERNATIONAL"
-    INSURANCE = "INSURANCE"
-    CUSTOMS = "CUSTOMS"
-    OTHER = "OTHER"
+class Currency(str, Enum):
+    EUR = "EUR"
+    CNY = "CNY"
+    USD = "USD"
+
+
+class CostCategoryKind(str, Enum):
+    SHIPPING = "shipping"
+    INSURANCE = "insurance"
+    CUSTOMS = "customs"
+    CUSTOM = "custom"
 
 
 class AllocationMethod(str, Enum):

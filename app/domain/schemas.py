@@ -7,11 +7,11 @@ from pydantic import BaseModel, ConfigDict
 
 from app.domain.enums import (
     AllocationMethod,
+    Currency,
     ItemOrigin,
     ListingStatus,
     MovementKind,
     OrderStatus,
-    ShipmentCostType,
     ShipmentStatus,
 )
 
@@ -107,20 +107,29 @@ class OrderStatusIn(BaseModel):
 
 
 class ShipmentCostIn(BaseModel):
-    type: ShipmentCostType
-    amount_eur_cents: int = 0
+    category_id: str
+    amount: int = 0
+    currency: Currency = Currency.EUR
     method: AllocationMethod = AllocationMethod.BY_VALUE
+    insured_amount: int | None = None
+    insured_currency: Currency | None = None
 
 
 class ShipmentCostOut(ShipmentCostIn):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    category_name: str = ""
+    category_kind: str = ""
+    amount_eur_cents: int = 0
 
 
 class ShipmentIn(BaseModel):
     status: ShipmentStatus | None = None
     order_ids: list[str] = []
+    total_paid_eur_cents: int = 0
+    fx_cny_eur: float | None = None
+    fx_source: str | None = None
     costs: list[ShipmentCostIn] = []
 
 
@@ -129,10 +138,27 @@ class ShipmentOut(BaseModel):
 
     id: str
     status: ShipmentStatus
+    total_paid_eur_cents: int
+    fx_cny_eur: float
+    fx_source: str
     created_at: datetime
     costs: list[ShipmentCostOut]
     orders: list[OrderOut]
     has_sales: bool = False
+
+
+class CostCategoryOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    kind: str
+    position: int
+
+
+class CostCategoryIn(BaseModel):
+    name: str
+    kind: str = "custom"
 
 
 class LandedItemOut(BaseModel):
@@ -144,10 +170,8 @@ class LandedItemOut(BaseModel):
     alipay_cny_fen: int
     cny_total_fen: int
     cny_eur_cents: int
-    international_cents: int
-    insurance_cents: int
-    customs_cents: int
-    other_cents: int
+    shipment_alloc_cents: dict[str, int]
+    shipment_eur_cents: int
     landed_eur_cents: int
 
 

@@ -26,11 +26,12 @@ from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 from app.db import Base
 from app.domain.enums import (
     AllocationMethod,
+    CostCategoryKind,
+    Currency,
     ItemOrigin,
     ListingStatus,
     MovementKind,
     OrderStatus,
-    ShipmentCostType,
     ShipmentStatus,
 )
 
@@ -212,13 +213,16 @@ class Shipment(Base):
     status: Mapped[ShipmentStatus] = mapped_column(
         SAEnum(ShipmentStatus, native_enum=False), default=ShipmentStatus.PREPARING
     )
+    total_paid_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
+    fx_source: Mapped[str] = mapped_column(String, default="fixed")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
     )
 
     costs: Mapped[list["ShipmentCost"]] = relationship(
-        back_populates="shipment", cascade="all, delete-orphan"
+        back_populates="shipment", cascade="all, delete-orphan", order_by="ShipmentCost.position"
     )
     orders: Mapped[list["Order"]] = relationship(back_populates="shipment")
 
@@ -240,21 +244,41 @@ class Shipment(Base):
         )
 
 
+class CostCategory(Base):
+    """A reusable shipping-cost bucket. The user can add their own."""
+
+    __tablename__ = "cost_categories"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String, unique=True)
+    kind: Mapped[CostCategoryKind] = mapped_column(
+        SAEnum(CostCategoryKind, native_enum=False), default=CostCategoryKind.CUSTOM
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class ShipmentCost(Base):
     __tablename__ = "shipment_costs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     shipment_id: Mapped[str] = mapped_column(String(36), ForeignKey("shipments.id"), index=True)
+    category_id: Mapped[str] = mapped_column(String(36), ForeignKey("cost_categories.id"))
 
-    type: Mapped[ShipmentCostType] = mapped_column(
-        SAEnum(ShipmentCostType, native_enum=False)
+    amount: Mapped[int] = mapped_column(Integer, default=0)
+    currency: Mapped[Currency] = mapped_column(
+        SAEnum(Currency, native_enum=False), default=Currency.EUR
     )
-    amount_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
     method: Mapped[AllocationMethod] = mapped_column(
         SAEnum(AllocationMethod, native_enum=False), default=AllocationMethod.BY_VALUE
     )
+    insured_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    insured_currency: Mapped[Currency | None] = mapped_column(
+        SAEnum(Currency, native_enum=False), nullable=True
+    )
+    position: Mapped[int] = mapped_column(Integer, default=0)
 
     shipment: Mapped["Shipment"] = relationship(back_populates="costs")
+    category: Mapped["CostCategory"] = relationship()
 
 
 class InventoryLot(Base):

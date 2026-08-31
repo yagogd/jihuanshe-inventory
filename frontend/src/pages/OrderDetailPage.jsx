@@ -192,7 +192,7 @@ export default function OrderDetailPage({ id }) {
               <tr key={item.item_id}>
                 <td>{item.name}</td>
                 <td>{fen2yuan(item.cny_eur_cents)}</td>
-                <td>{fen2yuan(item.international_cents + item.insurance_cents + item.customs_cents + item.other_cents)}</td>
+                <td>{fen2yuan(item.shipment_eur_cents)}</td>
                 <td>{fen2yuan(item.landed_eur_cents)}</td>
                 <td>{fen2yuan(Math.round(item.landed_eur_cents / item.quantity))}</td>
               </tr>

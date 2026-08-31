@@ -14,6 +14,7 @@ from app.api.orders import router as orders_router
 from app.api.overview import router as overview_router
 from app.api.sales import listings_router, sales_router
 from app.api.settings import router as settings_router
+from app.api.shipments import categories_router
 from app.api.shipments import router as shipments_router
 from app.config import get_settings
 from app.db import init_db
@@ -40,6 +41,7 @@ app.include_router(cards.router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(shipments_router, prefix="/api")
+app.include_router(categories_router, prefix="/api")
 app.include_router(inventory_router, prefix="/api")
 app.include_router(listings_router, prefix="/api")
 app.include_router(sales_router, prefix="/api")

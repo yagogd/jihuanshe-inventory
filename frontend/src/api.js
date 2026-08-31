@@ -122,6 +122,13 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  listCostCategories: () => request('/cost-categories'),
+  createCostCategory: (body) =>
+    request('/cost-categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)

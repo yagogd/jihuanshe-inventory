@@ -19,7 +19,7 @@ export default function ShipmentsPage() {
     setCreating(true)
     setError(null)
     try {
-      const shipment = await api.createShipment({ order_ids: [], costs: [] })
+      const shipment = await api.createShipment({ order_ids: [], costs: [], total_paid_eur_cents: 0 })
       window.location.hash = '#/shipments/' + shipment.id
     } catch (e) {
       setError(e.message)
@@ -53,11 +53,7 @@ export default function ShipmentsPage() {
             <tr key={shipment.id}>
               <td>{shipment.status}</td>
               <td>{shipment.orders.length}</td>
-              <td>
-                {fen2yuan(
-                  shipment.costs.reduce((n, c) => n + c.amount_eur_cents, 0)
-                )}
-              </td>
+              <td>{fen2yuan(shipment.total_paid_eur_cents)}</td>
               <td>
                 <a href={`#/shipments/${shipment.id}`}>Ver</a>
               </td>

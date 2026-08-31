@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
 from app.domain.costs import allocate_largest_remainder, compute_order_landed
-from app.domain.enums import AllocationMethod, ShipmentCostType, ShipmentStatus
-from app.domain.models import Order, OrderItem, Shipment, ShipmentCost
+from app.domain.enums import AllocationMethod, CostCategoryKind, Currency, ShipmentStatus
+from app.domain.models import CostCategory, Order, OrderItem, Shipment, ShipmentCost
 from app.main import app
 
 
@@ -92,16 +92,18 @@ def test_landed_with_shipment_costs():
     shipment = Shipment(status=ShipmentStatus.PREPARING)
     shipment.orders.append(o1)
     shipment.orders.append(o2)
+    category = CostCategory(name="Internacional", kind=CostCategoryKind.SHIPPING)
     shipment.costs.append(
         ShipmentCost(
-            type=ShipmentCostType.INTERNATIONAL,
-            amount_eur_cents=200,
+            category=category,
+            amount=200,
+            currency=Currency.EUR,
             method=AllocationMethod.BY_QUANTITY,
         )
     )
 
     result = compute_order_landed(o1, shipment)
-    assert result["items"][0]["international_cents"] == 100
+    assert result["items"][0]["shipment_alloc_cents"]["Internacional"] == 100
     assert result["items"][0]["cny_eur_cents"] == 1300
     assert result["items"][0]["landed_eur_cents"] == 1400
     assert result["total_landed_eur_cents"] == 1400
