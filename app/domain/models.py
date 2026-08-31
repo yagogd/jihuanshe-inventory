@@ -308,6 +308,7 @@ class InventoryLot(Base):
         SAEnum(Currency, native_enum=False), nullable=True
     )
     unit_cost_eur_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    condition: Mapped[str | None] = mapped_column(String, nullable=True)
     note: Mapped[str | None] = mapped_column(String, nullable=True)
     image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)

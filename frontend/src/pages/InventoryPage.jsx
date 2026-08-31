@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 import Badge from '../components/Badge.jsx'
+import Condition from '../components/Condition.jsx'
+import LanguageFlag from '../components/LanguageFlag.jsx'
 import Modal from '../components/Modal.jsx'
 
 const CURRENCIES = ['EUR', 'CNY', 'USD']
@@ -11,7 +13,7 @@ const emptyForm = () => ({
   collector_number: '',
   name_zh: '',
   name_en: '',
-  condition: '',
+  condition: 'NM',
   quantity: '1',
   amount: '0',
   currency: 'EUR',
@@ -29,7 +31,7 @@ const emptyFilters = () => ({
   source: '',
   foil: '',
   promo: '',
-  available_only: true,
+  available_only: false,
 })
 
 export default function InventoryPage() {
@@ -297,6 +299,7 @@ export default function InventoryPage() {
               <th>Nombre</th>
               <th>Set/Nº</th>
               <th>Cond.</th>
+              <th>Idioma</th>
               <th>Foil/Promo</th>
               <th>Disp.</th>
               <th>Total</th>
@@ -324,7 +327,8 @@ export default function InventoryPage() {
                 <td className="muted">
                   {lot.set_code}·{lot.collector_number}
                 </td>
-                <td className="muted">{lot.condition || '—'}</td>
+                <td><Condition value={lot.condition} /></td>
+                <td><LanguageFlag language={lot.language} /></td>
                 <td>
                   {lot.foil && <Badge tone="warn">Foil</Badge>}{' '}
                   {lot.promo && <Badge tone="neutral">Promo</Badge>}
@@ -359,7 +363,7 @@ export default function InventoryPage() {
             ))}
             {lots.length === 0 && (
               <tr>
-                <td colSpan={9} className="muted">
+                <td colSpan={10} className="muted">
                   Sin cartas que coincidan con los filtros.
                 </td>
               </tr>

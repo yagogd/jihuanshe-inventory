@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domain.cards import resolve_card
+from app.domain.conditions import normalize_condition
 from app.domain.enums import LotSource, MovementKind, ShipmentStatus
 from app.domain.fx import convert_to_eur
 from app.domain.models import InventoryLot, LotMovement, OrderItem, Shipment
@@ -42,6 +43,7 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
                 source=LotSource.RECEIVE,
                 quantity=item.quantity,
                 available=item.quantity,
+                condition=normalize_condition(item.condition),
             )
             lot.movements.append(
                 LotMovement(kind=MovementKind.RECEIVE, delta=item.quantity)
@@ -81,6 +83,7 @@ def add_manual_lot(db: Session, payload: InventoryLotIn) -> InventoryLot:
         amount=payload.amount,
         currency=payload.currency,
         unit_cost_eur_cents=unit_cost,
+        condition=normalize_condition(payload.condition),
         note=payload.note,
         image_path=payload.image_path,
     )
@@ -107,6 +110,7 @@ def split_lot(db: Session, lot: InventoryLot, quantity: int) -> InventoryLot:
         quantity=quantity,
         available=quantity,
         unit_cost_eur_cents=lot.unit_cost_eur_cents,
+        condition=lot.condition,
         note=lot.note,
         image_path=lot.image_path,
     )
@@ -170,7 +174,7 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         "collector_number": (
             card.collector_number if card else (item.collector_number if item else None)
         ),
-        "condition": item.condition if item else None,
+        "condition": lot.condition or (item.condition if item else None),
         "variant": card.variant if card else (item.variant if item else None),
         "language": card.language if card else (item.language if item else None),
         "foil": card.foil if card else (item.foil if item else False),

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import Condition from '../components/Condition.jsx'
+import LanguageFlag from '../components/LanguageFlag.jsx'
 
 export default function CardDetailPage({ id }) {
   const [card, setCard] = useState(null)
@@ -85,7 +87,7 @@ export default function CardDetailPage({ id }) {
           <span className="muted">Nº: {card.collector_number || '—'}</span>
           <span className="muted">Juego: {card.game || '—'}</span>
           {card.variant && <span className="muted">Variante: {card.variant}</span>}
-          {card.language && <span className="muted">Idioma: {card.language}</span>}
+          {card.language && <LanguageFlag language={card.language} />}
           {card.foil && <span className="muted">Foil</span>}
           {card.promo && <span className="muted">Promo</span>}
         </div>
@@ -110,7 +112,7 @@ export default function CardDetailPage({ id }) {
                 <td>{purchase.seller || '—'}</td>
                 <td>{purchase.quantity}</td>
                 <td>{(purchase.unit_price_fen / 100).toFixed(2)}</td>
-                <td className="muted">{purchase.condition || '—'}</td>
+                <td><Condition value={purchase.condition} /></td>
               </tr>
             ))}
             {card.purchases.length === 0 && (
@@ -141,7 +143,7 @@ export default function CardDetailPage({ id }) {
                   <strong>{lot.available}</strong>
                 </td>
                 <td className="muted">{lot.quantity}</td>
-                <td className="muted">{lot.condition || '—'}</td>
+                <td><Condition value={lot.condition} /></td>
               </tr>
             ))}
             {card.lots.length === 0 && (

@@ -81,6 +81,7 @@ def _migrate() -> None:
             "amount": "INTEGER",
             "currency": "VARCHAR",
             "unit_cost_eur_cents": "INTEGER",
+            "condition": "VARCHAR",
             "note": "VARCHAR",
             "image_path": "VARCHAR",
         },
@@ -109,6 +110,18 @@ def _migrate() -> None:
         conn.execute(text("UPDATE settings SET fx_mode = 'historical' WHERE fx_mode IS NULL"))
         conn.execute(text("UPDATE orders SET fx_source = 'fixed' WHERE fx_source = 'manual'"))
         conn.execute(text("UPDATE shipments SET fx_source = 'fixed' WHERE fx_source IS NULL"))
+        conn.execute(
+            text(
+                "UPDATE order_items SET condition = 'NM' "
+                "WHERE condition IS NULL OR condition = '' OR condition = '流通品相'"
+            )
+        )
+        conn.execute(
+            text(
+                "UPDATE inventory_lots SET condition = 'NM' "
+                "WHERE condition IS NULL OR condition = ''"
+            )
+        )
 
 
 def _backfill_cards() -> None:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.domain.cards import resolve_card
+from app.domain.conditions import normalize_condition
 from app.domain.enums import AllocationMethod, OrderStatus
 from app.domain.fx import resolve_cny_eur
 from app.domain.models import AppSettings, Order, OrderItem
@@ -109,7 +110,7 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
                 set_code=item.set_code,
                 collector_number=item.collector_number,
                 language=item.language,
-                condition=item.condition,
+                condition=normalize_condition(item.condition),
                 variant=item.variant,
                 promo=item.promo,
                 foil=item.foil,
@@ -228,7 +229,7 @@ def _reconcile_items(db: Session, order: Order, payload_items: list) -> None:
         item.set_code = payload_item.set_code
         item.collector_number = payload_item.collector_number
         item.language = payload_item.language
-        item.condition = payload_item.condition
+        item.condition = normalize_condition(payload_item.condition)
         item.variant = payload_item.variant
         item.promo = payload_item.promo
         item.foil = payload_item.foil
