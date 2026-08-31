@@ -59,6 +59,7 @@ class AppSettings(Base):
     alipay_fee_rate: Mapped[float] = mapped_column(Float, default=0.03)
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
     fx_mode: Mapped[str] = mapped_column(String, default="historical")
+    display_currency: Mapped[str] = mapped_column(String, default="EUR")
 
 
 class FxRate(Base):

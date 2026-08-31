@@ -16,6 +16,7 @@ export default function SettingsPage() {
           rate: String(data.alipay_fee_rate * 100),
           fx: String(data.fx_cny_eur),
           fx_mode: data.fx_mode || 'historical',
+          display_currency: data.display_currency || 'EUR',
         })
       )
       .catch((e) => setError(e.message))
@@ -31,6 +32,7 @@ export default function SettingsPage() {
         alipay_fee_rate: (parseFloat(form.rate) || 0) / 100,
         fx_cny_eur: parseFloat(form.fx) || 0,
         fx_mode: form.fx_mode,
+        display_currency: form.display_currency,
       }
       const data = await api.updateSettings(body)
       setForm({
@@ -38,6 +40,7 @@ export default function SettingsPage() {
         rate: String(data.alipay_fee_rate * 100),
         fx: String(data.fx_cny_eur),
         fx_mode: data.fx_mode,
+        display_currency: data.display_currency,
       })
       setSaved(true)
     } catch (e) {
@@ -89,11 +92,24 @@ export default function SettingsPage() {
               />
             </div>
           )}
+          <div className="field">
+            <label>Moneda de visualización</label>
+            <select
+              value={form.display_currency}
+              onChange={(e) => setForm({ ...form, display_currency: e.target.value })}
+            >
+              <option value="EUR">Euro (€)</option>
+              <option value="CNY">Yuan (¥)</option>
+            </select>
+          </div>
         </div>
         <div className="muted" style={{ marginTop: 12 }}>
+          La moneda de visualización se usa arriba de cada precio; debajo siempre se muestra el equivalente en euros.
+        </div>
+        <div className="muted" style={{ marginTop: 4 }}>
           {form.fx_mode === 'historical'
-            ? 'Se usa el tipo de cambio oficial del día de compra (ECB). Sin conexión se usa la tasa fija.'
-            : 'Se usa la tasa fija para todas las órdenes nuevas. El resto de valores solo afectan a órdenes nuevas.'}
+            ? 'Conversión: se usa el tipo de cambio oficial del día de compra (ECB). Sin conexión se usa la tasa fija.'
+            : 'Conversión: se usa la tasa fija para todas las órdenes nuevas.'}
         </div>
         <div className="row" style={{ marginTop: 16 }}>
           <button onClick={save} disabled={saving}>

@@ -6,6 +6,8 @@ for a batch translation of everything still missing.
 """
 from __future__ import annotations
 
+import time
+
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -51,7 +53,11 @@ def translate_card(db: Session, card: Card) -> bool:
 
 
 def translate_all(db: Session) -> int:
-    """Force-translate every card still missing an English name."""
+    """Force-translate every card still missing an English name.
+
+    Commits incrementally so partial progress survives a failure, and pauses
+    briefly between requests to avoid rate-limiting the provider.
+    """
     cards = list(
         db.scalars(
             select(Card)
@@ -65,6 +71,6 @@ def translate_all(db: Session) -> int:
         if result:
             card.name_en = result
             translated += 1
-    if translated:
-        db.commit()
+            db.commit()
+        time.sleep(0.1)
     return translated

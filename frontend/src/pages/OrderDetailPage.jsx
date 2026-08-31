@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 import Badge from '../components/Badge.jsx'
+import Money from '../components/Money.jsx'
 
 const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
 const METHODS = ['BY_VALUE', 'BY_QUANTITY', 'MANUAL']
@@ -43,6 +44,7 @@ export default function OrderDetailPage({ id }) {
   const [order, setOrder] = useState(null)
   const [form, setForm] = useState(null)
   const [landed, setLanded] = useState(null)
+  const [settings, setSettings] = useState(null)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -50,6 +52,7 @@ export default function OrderDetailPage({ id }) {
   useEffect(() => {
     api.getOrder(id).then((data) => { setOrder(data); setForm(toForm(data)) }).catch((e) => setError(e.message))
     api.getOrderLanded(id).then(setLanded).catch(() => {})
+    api.getSettings().then(setSettings).catch(() => {})
   }, [id])
 
   function updateItem(index, patch) {
@@ -106,6 +109,8 @@ export default function OrderDetailPage({ id }) {
   const nameEnById = Object.fromEntries(
     form.items.map((item) => [item.id, item.name_en]).filter(([, nameEn]) => nameEn)
   )
+  const currency = (settings && settings.display_currency) || 'EUR'
+  const fx = (landed && landed.fx_cny_eur) || (settings && settings.fx_cny_eur) || 0.13
 
   return <div>
     <h1>Editar orden</h1>
@@ -197,10 +202,10 @@ export default function OrderDetailPage({ id }) {
           <thead>
             <tr>
               <th>Ítem</th>
-              <th>Compra €</th>
-              <th>Envío €</th>
-              <th>Total €</th>
-              <th>Unitario €</th>
+              <th>Compra</th>
+              <th>Envío</th>
+              <th>Total</th>
+              <th>Unitario</th>
             </tr>
           </thead>
           <tbody>
@@ -212,16 +217,21 @@ export default function OrderDetailPage({ id }) {
                     <div className="muted" style={{ fontSize: 12 }}>{nameEnById[item.item_id]}</div>
                   )}
                 </td>
-                <td>{fen2yuan(item.cny_eur_cents)}</td>
-                <td>{fen2yuan(item.shipment_eur_cents)}</td>
-                <td>{fen2yuan(item.landed_eur_cents)}</td>
-                <td>{fen2yuan(Math.round(item.landed_eur_cents / item.quantity))}</td>
+                <td>
+                  <Money eurCents={item.cny_eur_cents} cnyFen={item.cny_total_fen} currency={currency} fx={fx} />
+                </td>
+                <td><Money eurCents={item.shipment_eur_cents} currency={currency} fx={fx} /></td>
+                <td><Money eurCents={item.landed_eur_cents} currency={currency} fx={fx} /></td>
+                <td><Money eurCents={Math.round(item.landed_eur_cents / item.quantity)} currency={currency} fx={fx} /></td>
               </tr>
             ))}
           </tbody>
         </table>
         <div className="totals">
-          Total aterrizado: <strong>{fen2yuan(landed.total_landed_eur_cents)} €</strong>
+          Total aterrizado:{' '}
+          <strong>
+            <Money eurCents={landed.total_landed_eur_cents} currency={currency} fx={fx} />
+          </strong>
         </div>
       </div>
     )}

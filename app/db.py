@@ -72,7 +72,7 @@ def _migrate() -> None:
         },
     )
     add_columns("order_items", {"card_id": "VARCHAR"})
-    add_columns("settings", {"fx_mode": "VARCHAR"})
+    add_columns("settings", {"fx_mode": "VARCHAR", "display_currency": "VARCHAR DEFAULT 'EUR'"})
     add_columns(
         "inventory_lots",
         {

@@ -97,6 +97,7 @@ class SettingsOut(BaseModel):
     alipay_fee_rate: float
     fx_cny_eur: float
     fx_mode: str
+    display_currency: str
 
 
 class SettingsIn(BaseModel):
@@ -104,6 +105,7 @@ class SettingsIn(BaseModel):
     alipay_fee_rate: float | None = None
     fx_cny_eur: float | None = None
     fx_mode: str | None = None
+    display_currency: str | None = None
 
 
 class OrderStatusIn(BaseModel):
