@@ -1,8 +1,18 @@
 # Jihuanshe Tracker
 
-Aplicación local para importar órdenes de Jihuanshe desde Android mediante ADB, revisar sus cartas y conservar los datos de compra en SQLite.
+Aplicación local para importar órdenes de Jihuanshe desde Android mediante ADB, revisar sus cartas, calcular el coste aterrizado de cada una y gestionar inventario y ventas.
 
 El proyecto utiliza FastAPI, SQLAlchemy y SQLite en el backend, y React con Vite en el frontend. El alcance y las decisiones técnicas están documentados en [PLAN.md](PLAN.md).
+
+## Funcionalidad
+
+- **Importar** órdenes de Jihuanshe por ADB (detección, scroll, recorte de imágenes).
+- **Catálogo de cartas** (`Cartas`): una fila por carta única (`juego + set + número`), con nombre chino e inglés, búsqueda y ordenación. El inglés se traduce una sola vez (online) y se reutiliza.
+- **Órdenes** con nombre personalizado y tipo de cambio congelado.
+- **Conversión de divisas**: tipo de cambio histórico de la fecha de compra (ECB) o tasa fija configurable, con cargo real de tarjeta opcional y marca de estimado/confirmado.
+- **Envíos CN→ES**: coste total en EUR + desglose por categorías (en EUR o CNY) que debe cuadrar, con seguro (prima + cobertura) y categorías propias.
+- **Inventario** con lotes, división, grading y alta manual de cartas (compradas fuera de Jihuanshe) con imagen opcional.
+- **Ventas** con listados, beneficio y ROI.
 
 ## Requisitos
 
@@ -62,8 +72,5 @@ npm run build
 
 ## Datos locales
 
-La base de datos, las imágenes recortadas y los dumps XML se guardan en `data/`. Ese directorio, los archivos `.env` y los volcados del dispositivo están excluidos de Git para evitar publicar datos personales.
+La base de datos, las imágenes y los dumps XML se guardan en `data/`. Ese directorio, los archivos `.env` y los volcados del dispositivo están excluidos de Git para evitar publicar datos personales.
 
-## Estado
-
-Actualmente están implementadas todas las fases del plan (0–12): extracción ADB, revisión, persistencia, edición y ajustes, estados de orden, envíos CN→ES, motor de costes (landed cost), inventario con lotes, listados/ventas con beneficio y ROI, y pantalla de resumen. Consulta [PLAN.md](PLAN.md) para el roadmap completo.
