@@ -1,8 +1,6 @@
 import React, { useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
-const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
-
 function newItem() {
   return {
     raw_name: '',
@@ -83,12 +81,7 @@ export default function ImportPage() {
   function updateItem(index, patch) {
     setForm((prev) => ({
       ...prev,
-      items: prev.items.map((item, i) => {
-        if (i !== index) return item
-        const next = { ...item, ...patch }
-        if (patch.origin === 'BULK') next.include_in_allocation = false
-        return next
-      }),
+      items: prev.items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
     }))
   }
 
@@ -254,9 +247,7 @@ export default function ImportPage() {
                 <th>Precio ¥</th>
                 <th>Set/Nº</th>
                 <th>Variante</th>
-                <th>Origen</th>
                 <th>Promo</th>
-                <th>Coste</th>
                 <th></th>
               </tr>
             </thead>
@@ -304,31 +295,10 @@ export default function ImportPage() {
                     />
                   </td>
                   <td>
-                    <select
-                      value={item.origin}
-                      onChange={(e) => updateItem(index, { origin: e.target.value })}
-                    >
-                      {ORIGINS.map((origin) => (
-                        <option key={origin} value={origin}>
-                          {origin}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
                     <input
                       type="checkbox"
                       checked={!!item.promo}
                       onChange={(e) => updateItem(index, { promo: e.target.checked })}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="checkbox"
-                      checked={!!item.include_in_allocation}
-                      onChange={(e) =>
-                        updateItem(index, { include_in_allocation: e.target.checked })
-                      }
                     />
                   </td>
                   <td>

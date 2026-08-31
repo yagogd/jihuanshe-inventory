@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
-const ORIGINS = ['SCRAPED', 'MANUAL', 'SELLER_GIFT', 'BULK', 'ADJUSTMENT']
 const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
 const METHODS = ['BY_VALUE', 'BY_QUANTITY', 'MANUAL']
 
@@ -51,12 +50,7 @@ export default function OrderDetailPage({ id }) {
   }, [id])
 
   function updateItem(index, patch) {
-    setForm((current) => ({ ...current, items: current.items.map((item, i) => {
-      if (i !== index) return item
-      const next = { ...item, ...patch }
-      if (patch.origin === 'BULK') next.include_in_allocation = false
-      return next
-    }) }))
+    setForm((current) => ({ ...current, items: current.items.map((item, i) => i === index ? { ...item, ...patch } : item) }))
   }
 
   function addItem() {
@@ -152,7 +146,7 @@ export default function OrderDetailPage({ id }) {
         <span className="muted">ID: {order.id}</span>
       </div>
     </div>
-    <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Origen</th><th>Promo</th><th>Coste</th><th></th></tr></thead>
+    <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Promo</th><th></th></tr></thead>
       <tbody>{form.items.map((item, index) => <tr key={item.id || index}>
         <td>{item.image_path && <img className="thumb" src={`/images/${item.image_path}`} alt="" />}</td>
         <td><input value={item.normalized_name} title={item.raw_name} onChange={(e) => updateItem(index, { normalized_name: e.target.value })} /></td>
@@ -161,9 +155,7 @@ export default function OrderDetailPage({ id }) {
         <td><input style={{ width: 75 }} value={item.set_code || ''} onChange={(e) => updateItem(index, { set_code: e.target.value })} /></td>
         <td><input style={{ width: 95 }} value={item.collector_number || ''} onChange={(e) => updateItem(index, { collector_number: e.target.value })} /></td>
         <td><input style={{ width: 90 }} value={item.variant || ''} onChange={(e) => updateItem(index, { variant: e.target.value })} /></td>
-        <td><select value={item.origin} onChange={(e) => updateItem(index, { origin: e.target.value })}>{ORIGINS.map((origin) => <option key={origin} value={origin}>{origin}</option>)}</select></td>
         <td><input type="checkbox" checked={!!item.promo} onChange={(e) => updateItem(index, { promo: e.target.checked })} /></td>
-        <td><input type="checkbox" checked={!!item.include_in_allocation} onChange={(e) => updateItem(index, { include_in_allocation: e.target.checked })} /></td>
         <td><button className="secondary" onClick={() => removeItem(index)} title="Quitar ítem">×</button></td>
       </tr>)}</tbody>
     </table>
