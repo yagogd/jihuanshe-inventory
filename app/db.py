@@ -39,23 +39,31 @@ def _migrate() -> None:
     """Lightweight additive migrations for the dev SQLite database.
 
     ``create_all`` only creates missing tables; it never alters existing ones.
-    New columns are added here so a long-lived dev DB keeps up with the models.
+    New columns are added here (grouped by table) so a long-lived dev DB keeps
+    up with the models. Destructive changes are never made; old columns are
+    left in place once unused.
     """
     from sqlalchemy import inspect, text
 
     inspector = inspect(engine)
-    if "orders" not in inspector.get_table_names():
-        return
 
-    columns = {col["name"] for col in inspector.get_columns("orders")}
-    additions = {
-        "express_company": "VARCHAR",
-        "express_tracking": "VARCHAR",
-        "shipment_id": "VARCHAR",
-        "cost_method": "VARCHAR",
-    }
+    def add_columns(table: str, columns: dict[str, str]) -> None:
+        if table not in inspector.get_table_names():
+            return
+        existing = {col["name"] for col in inspector.get_columns(table)}
+        with engine.begin() as conn:
+            for name, ddl_type in columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}"))
+
+    add_columns(
+        "orders",
+        {
+            "express_company": "VARCHAR",
+            "express_tracking": "VARCHAR",
+            "shipment_id": "VARCHAR",
+            "cost_method": "VARCHAR",
+        },
+    )
     with engine.begin() as conn:
-        for name, ddl_type in additions.items():
-            if name not in columns:
-                conn.execute(text(f"ALTER TABLE orders ADD COLUMN {name} {ddl_type}"))
         conn.execute(text("UPDATE orders SET cost_method = 'BY_VALUE' WHERE cost_method IS NULL"))

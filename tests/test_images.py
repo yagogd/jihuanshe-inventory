@@ -3,12 +3,8 @@ import io
 from PIL import Image
 
 from app.extractors.contract import ParsedItem
-from app.extractors.uiautomator.images import (
-    crop_bounds,
-    crop_if_clean,
-    image_filename,
-    relocate_images,
-)
+from app.extractors.uiautomator.images import crop_bounds, crop_if_clean, image_filename
+from app.infra.images import relocate_images
 
 
 def _png(size=(100, 100), color=(255, 0, 0)):

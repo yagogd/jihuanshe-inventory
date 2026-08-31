@@ -16,7 +16,7 @@ from app.domain.enums import AllocationMethod, OrderStatus
 from app.domain.models import AppSettings, Order, OrderItem
 from app.domain.schemas import OrderIn
 from app.domain.settings import get_app_settings
-from app.extractors.uiautomator.images import relocate_images
+from app.infra.images import relocate_images
 
 
 def suggest_alipay_fee(
