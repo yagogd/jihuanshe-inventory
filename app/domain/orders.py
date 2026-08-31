@@ -22,6 +22,10 @@ from app.domain.translate import translate_cards
 from app.infra.images import relocate_images
 
 
+class OrderEditError(ValueError):
+    pass
+
+
 def suggest_alipay_fee(
     subtotal_fen: int, domestic_fen: int | None, threshold_fen: int, rate: float
 ) -> int:
@@ -66,6 +70,7 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
 
     order = Order(
         jihuanshe_order_id=payload.jihuanshe_order_id,
+        display_name=payload.display_name,
         seller=payload.seller,
         purchase_date=payload.purchase_date,
         express_company=payload.express_company,
@@ -161,6 +166,7 @@ def update_order(db: Session, order: Order, payload: OrderIn) -> Order:
     alipay, fx, fx_source = _alipay_and_fx(db, payload, subtotal, domestic, app_settings)
 
     order.jihuanshe_order_id = payload.jihuanshe_order_id
+    order.display_name = payload.display_name
     order.seller = payload.seller
     order.purchase_date = payload.purchase_date
     order.express_company = payload.express_company
@@ -178,30 +184,67 @@ def update_order(db: Session, order: Order, payload: OrderIn) -> Order:
     order.card_charged_eur_cents = payload.card_charged_eur_cents
     order.cost_method = payload.cost_method or order.cost_method or AllocationMethod.BY_VALUE
 
-    order.items.clear()
-    for position, item in enumerate(payload.items):
-        order.items.append(
-            OrderItem(
-                external_card_id=item.external_card_id,
-                raw_name=item.raw_name,
-                normalized_name=item.normalized_name or item.raw_name,
-                game=item.game,
-                set_code=item.set_code,
-                collector_number=item.collector_number,
-                language=item.language,
-                condition=item.condition,
-                variant=item.variant,
-                promo=item.promo,
-                foil=item.foil,
-                quantity=item.quantity,
-                unit_price_fen=item.unit_price_fen,
-                origin=item.origin,
-                include_in_allocation=item.include_in_allocation,
-                image_path=item.image_path,
-                position=position,
-            )
-        )
+    _reconcile_items(db, order, payload.items)
 
     db.commit()
     db.refresh(order)
     return order
+
+
+def _reconcile_items(db: Session, order: Order, payload_items: list) -> None:
+    """Update items in place, add new ones, remove unused ones safely.
+
+    Never recreates an existing item's id: lots and sales reference it. An
+    item that has inventory or sales cannot be removed.
+    """
+    existing = {item.id: item for item in order.items}
+    kept: set[str] = set()
+
+    for position, payload_item in enumerate(payload_items):
+        card = resolve_card(
+            db,
+            game=payload_item.game,
+            set_code=payload_item.set_code,
+            collector_number=payload_item.collector_number,
+            raw_name=payload_item.raw_name,
+            language=payload_item.language,
+            variant=payload_item.variant,
+            foil=payload_item.foil,
+            promo=payload_item.promo,
+            image_path=payload_item.image_path,
+        )
+        item = existing.get(payload_item.id) if payload_item.id else None
+        if item is None:
+            item = OrderItem()
+            order.items.append(item)
+        else:
+            kept.add(item.id)
+
+        item.card_id = card.id if card is not None else None
+        item.external_card_id = payload_item.external_card_id
+        item.raw_name = payload_item.raw_name
+        item.normalized_name = payload_item.normalized_name or payload_item.raw_name
+        item.game = payload_item.game
+        item.set_code = payload_item.set_code
+        item.collector_number = payload_item.collector_number
+        item.language = payload_item.language
+        item.condition = payload_item.condition
+        item.variant = payload_item.variant
+        item.promo = payload_item.promo
+        item.foil = payload_item.foil
+        item.quantity = payload_item.quantity
+        item.unit_price_fen = payload_item.unit_price_fen
+        item.origin = payload_item.origin
+        item.include_in_allocation = payload_item.include_in_allocation
+        item.image_path = payload_item.image_path
+        item.position = position
+
+    for item_id, item in existing.items():
+        if item_id in kept:
+            continue
+        if item.lots:
+            raise OrderEditError(
+                f"No se puede eliminar «{item.normalized_name or item.raw_name}»: "
+                "ya tiene inventario o ventas registradas."
+            )
+        db.delete(item)

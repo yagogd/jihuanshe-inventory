@@ -34,6 +34,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _migrate()
     _backfill_cards()
+    _backfill_lots()
     _seed_cost_categories()
     _remap_legacy_costs()
 
@@ -67,10 +68,23 @@ def _migrate() -> None:
             "shipment_id": "VARCHAR",
             "cost_method": "VARCHAR",
             "card_charged_eur_cents": "INTEGER",
+            "display_name": "VARCHAR",
         },
     )
     add_columns("order_items", {"card_id": "VARCHAR"})
     add_columns("settings", {"fx_mode": "VARCHAR"})
+    add_columns(
+        "inventory_lots",
+        {
+            "card_id": "VARCHAR",
+            "source": "VARCHAR DEFAULT 'RECEIVE'",
+            "amount": "INTEGER",
+            "currency": "VARCHAR",
+            "unit_cost_eur_cents": "INTEGER",
+            "note": "VARCHAR",
+            "image_path": "VARCHAR",
+        },
+    )
     add_columns(
         "shipments",
         {
@@ -103,6 +117,26 @@ def _backfill_cards() -> None:
 
     with SessionLocal() as session:
         backfill_cards(session)
+
+
+def _backfill_lots() -> None:
+    """Set ``card_id`` and ``source`` on lots created before the Card model."""
+    from sqlalchemy import select
+
+    from app.domain import models as m
+
+    with SessionLocal() as session:
+        lots = list(
+            session.scalars(
+                select(m.InventoryLot).where(m.InventoryLot.card_id.is_(None))
+            )
+        )
+        for lot in lots:
+            if lot.order_item is not None and lot.order_item.card_id:
+                lot.card_id = lot.order_item.card_id
+            if lot.source is None:
+                lot.source = m.LotSource.RECEIVE
+        session.commit()
 
 
 def _seed_cost_categories() -> None:

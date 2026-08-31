@@ -20,17 +20,19 @@ from app.domain.schemas import ListingIn, ListingOut, SaleIn, SaleOut
 listings_router = APIRouter(prefix="/listings", tags=["listings"])
 sales_router = APIRouter(prefix="/sales", tags=["sales"])
 
-_LOT_LOAD = selectinload(Listing.lot).selectinload(InventoryLot.order_item).selectinload(
-    OrderItem.order
+_LOT_LOAD = (
+    selectinload(Listing.lot).selectinload(InventoryLot.card),
+    selectinload(Listing.lot).selectinload(InventoryLot.order_item).selectinload(OrderItem.order),
 )
-_SALE_LOAD = selectinload(Sale.lot).selectinload(InventoryLot.order_item).selectinload(
-    OrderItem.order
+_SALE_LOAD = (
+    selectinload(Sale.lot).selectinload(InventoryLot.card),
+    selectinload(Sale.lot).selectinload(InventoryLot.order_item).selectinload(OrderItem.order),
 )
 
 
 def _load_listing(listing_id: str, db: Session) -> Listing:
     listing = db.scalar(
-        select(Listing).options(_LOT_LOAD).where(Listing.id == listing_id)
+        select(Listing).options(*_LOT_LOAD).where(Listing.id == listing_id)
     )
     if listing is None:
         raise HTTPException(status_code=404, detail="Listado no encontrado")
@@ -40,7 +42,7 @@ def _load_listing(listing_id: str, db: Session) -> Listing:
 @listings_router.get("", response_model=list[ListingOut])
 def list_listings(db: Session = Depends(get_db)) -> list[dict]:
     listings = list(
-        db.scalars(select(Listing).options(_LOT_LOAD).order_by(Listing.created_at.desc()))
+        db.scalars(select(Listing).options(*_LOT_LOAD).order_by(Listing.created_at.desc()))
     )
     return [listing_to_dict(listing) for listing in listings]
 
@@ -49,7 +51,10 @@ def list_listings(db: Session = Depends(get_db)) -> list[dict]:
 def create_listing_endpoint(payload: ListingIn, db: Session = Depends(get_db)) -> dict:
     lot = db.scalar(
         select(InventoryLot)
-        .options(selectinload(InventoryLot.order_item).selectinload(OrderItem.order))
+        .options(
+            selectinload(InventoryLot.card),
+            selectinload(InventoryLot.order_item).selectinload(OrderItem.order),
+        )
         .where(InventoryLot.id == payload.lot_id)
     )
     if lot is None:
@@ -85,6 +90,6 @@ def remove_listing_endpoint(listing_id: str, db: Session = Depends(get_db)) -> d
 @sales_router.get("", response_model=list[SaleOut])
 def list_sales(db: Session = Depends(get_db)) -> list[dict]:
     sales = list(
-        db.scalars(select(Sale).options(_SALE_LOAD).order_by(Sale.sold_at.desc()))
+        db.scalars(select(Sale).options(*_SALE_LOAD).order_by(Sale.sold_at.desc()))
     )
     return [sale_to_dict(sale) for sale in sales]

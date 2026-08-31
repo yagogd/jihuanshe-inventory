@@ -42,19 +42,22 @@ def compute_overview(db: Session) -> dict:
     for lot in lots:
         if lot.available <= 0:
             continue
-        order = lot.order_item.order
-        if order.id not in landed_cache:
-            landed_cache[order.id] = compute_order_landed(
-                order, shipments.get(order.shipment_id)
+        if lot.order_item is None:
+            unit = lot.unit_cost_eur_cents or 0
+            invested += unit * lot.quantity
+        else:
+            order = lot.order_item.order
+            if order.id not in landed_cache:
+                landed_cache[order.id] = compute_order_landed(
+                    order, shipments.get(order.shipment_id)
+                )
+            entry = next(
+                (e for e in landed_cache[order.id]["items"] if e["item_id"] == lot.order_item.id),
+                None,
             )
-        entry = next(
-            (e for e in landed_cache[order.id]["items"] if e["item_id"] == lot.order_item.id),
-            None,
-        )
-        if entry and entry["quantity"]:
-            unit = round(entry["landed_eur_cents"] / entry["quantity"])
-            inventory_units += lot.available
-            inventory_value += lot.available * unit
+            unit = round(entry["landed_eur_cents"] / entry["quantity"]) if entry and entry["quantity"] else 0
+        inventory_units += lot.available
+        inventory_value += lot.available * unit
 
     sales = list(db.scalars(select(Sale)))
     revenue = sum(sale.quantity * sale.unit_price_eur_cents for sale in sales)

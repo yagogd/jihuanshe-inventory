@@ -30,6 +30,7 @@ from app.domain.enums import (
     Currency,
     ItemOrigin,
     ListingStatus,
+    LotSource,
     MovementKind,
     OrderStatus,
     ShipmentStatus,
@@ -114,6 +115,7 @@ class Order(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     jihuanshe_order_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     seller: Mapped[str | None] = mapped_column(String, nullable=True)
     purchase_date: Mapped[str | None] = mapped_column(String, nullable=True)
     express_company: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -285,14 +287,28 @@ class InventoryLot(Base):
     __tablename__ = "inventory_lots"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
-    order_item_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("order_items.id"), index=True
+    order_item_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("order_items.id"), index=True, nullable=True
+    )
+    card_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cards.id"), index=True, nullable=True
+    )
+    source: Mapped[LotSource] = mapped_column(
+        SAEnum(LotSource, native_enum=False), default=LotSource.RECEIVE
     )
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     available: Mapped[int] = mapped_column(Integer, default=0)
+    amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[Currency | None] = mapped_column(
+        SAEnum(Currency, native_enum=False), nullable=True
+    )
+    unit_cost_eur_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str | None] = mapped_column(String, nullable=True)
+    image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
-    order_item: Mapped["OrderItem"] = relationship(back_populates="lots")
+    order_item: Mapped["OrderItem | None"] = relationship(back_populates="lots")
+    card: Mapped["Card | None"] = relationship()
     movements: Mapped[list["LotMovement"]] = relationship(
         back_populates="lot", cascade="all, delete-orphan", order_by="LotMovement.created_at"
     )

@@ -49,6 +49,7 @@ export default function OrdersPage() {
       <table>
         <thead>
           <tr>
+            <th>Nombre</th>
             <th>Fecha</th>
             <th>Vendedor</th>
             <th>Artículos</th>
@@ -60,6 +61,7 @@ export default function OrdersPage() {
         <tbody>
           {orders.map((order) => (
             <tr key={order.id}>
+              <td>{order.display_name || (order.seller || '—')}</td>
               <td>{order.purchase_date || '—'}</td>
               <td>{order.seller || '—'}</td>
               <td>{order.items.reduce((n, item) => n + item.quantity, 0)}</td>
@@ -80,7 +82,7 @@ export default function OrdersPage() {
           ))}
           {orders.length === 0 && (
             <tr>
-              <td colSpan={6} className="muted">
+              <td colSpan={7} className="muted">
                 Sin órdenes en este estado.
               </td>
             </tr>

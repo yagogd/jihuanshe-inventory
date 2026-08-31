@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import cards
+from app.api import cards, images
 from app.api.import_ import router as import_router
 from app.api.inventory import router as inventory_router
 from app.api.orders import router as orders_router
@@ -38,6 +38,7 @@ app.add_middleware(
 
 app.include_router(import_router, prefix="/api")
 app.include_router(cards.router, prefix="/api")
+app.include_router(images.router, prefix="/api")
 app.include_router(orders_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(shipments_router, prefix="/api")

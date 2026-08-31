@@ -26,7 +26,8 @@ function newItem() {
 
 function toForm(order) {
   return {
-    jihuanshe_order_id: order.jihuanshe_order_id || '', seller: order.seller || '',
+    jihuanshe_order_id: order.jihuanshe_order_id || '', display_name: order.display_name || '',
+    seller: order.seller || '',
     purchase_date: order.purchase_date || '', express_company: order.express_company || '',
     express_tracking: order.express_tracking || '', domestic_shipping: fen2yuan(order.domestic_shipping_fen),
     alipay_fee: order.alipay_fee_fen == null ? '' : fen2yuan(order.alipay_fee_fen),
@@ -66,7 +67,8 @@ export default function OrderDetailPage({ id }) {
     setSaving(true); setSaved(false); setError(null)
     try {
       const payload = {
-        jihuanshe_order_id: form.jihuanshe_order_id || null, seller: form.seller || null,
+        jihuanshe_order_id: form.jihuanshe_order_id || null, display_name: form.display_name || null,
+        seller: form.seller || null,
         purchase_date: form.purchase_date || null, express_company: form.express_company || null,
         express_tracking: form.express_tracking || null,
         domestic_shipping_fen: yuan2fen(form.domestic_shipping),
@@ -75,6 +77,7 @@ export default function OrderDetailPage({ id }) {
         card_charged_eur_cents: form.card_charged === '' ? null : yuan2fen(form.card_charged),
         cost_method: form.cost_method,
         items: form.items.map((item, index) => ({
+          id: item.id || null,
           raw_name: item.raw_name || item.normalized_name, normalized_name: item.normalized_name || item.raw_name,
           game: item.game, set_code: item.set_code || null, collector_number: item.collector_number || null,
           language: item.language, condition: item.condition, variant: item.variant || null,
@@ -110,6 +113,7 @@ export default function OrderDetailPage({ id }) {
         </div>
       )}
       <div className="row" style={{ marginTop: 12 }}>
+        <Field label="Nombre de la orden" value={form.display_name} set={(value) => setForm({ ...form, display_name: value })} />
         <Field label="Nº de pedido" value={form.jihuanshe_order_id} set={(value) => setForm({ ...form, jihuanshe_order_id: value })} />
         <Field label="Vendedor" value={form.seller} set={(value) => setForm({ ...form, seller: value })} />
         <Field label="Fecha" value={form.purchase_date} set={(value) => setForm({ ...form, purchase_date: value })} />

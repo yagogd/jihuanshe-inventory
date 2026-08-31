@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.domain.costs import compute_order_landed
 from app.domain.enums import ListingStatus, MovementKind
-from app.domain.inventory import InventoryError
+from app.domain.inventory import InventoryError, lot_to_dict
 from app.domain.models import InventoryLot, Listing, LotMovement, Order, Sale, Shipment
 
 
 def _snapshot(db: Session, lot: InventoryLot) -> tuple[int, str]:
+    if lot.order_item is None:
+        return lot.unit_cost_eur_cents or 0, "{}"
     item = lot.order_item
     order = item.order
     shipment = None
@@ -105,7 +107,7 @@ def sale_to_dict(sale: Sale) -> dict:
     cost = sale.quantity * sale.landed_unit_eur_cents + sale.fees_eur_cents
     profit = revenue - cost
     roi = round(profit / cost * 100, 1) if cost else 0.0
-    item = sale.lot.order_item
+    info = lot_to_dict(sale.lot)
     return {
         "id": sale.id,
         "lot_id": sale.lot_id,
@@ -114,9 +116,9 @@ def sale_to_dict(sale: Sale) -> dict:
         "fees_eur_cents": sale.fees_eur_cents,
         "landed_unit_eur_cents": sale.landed_unit_eur_cents,
         "sold_at": sale.sold_at,
-        "name": item.normalized_name or item.raw_name,
-        "set_code": item.set_code,
-        "collector_number": item.collector_number,
+        "name": info["name"],
+        "set_code": info["set_code"],
+        "collector_number": info["collector_number"],
         "revenue_eur_cents": revenue,
         "cost_eur_cents": cost,
         "profit_eur_cents": profit,
@@ -125,7 +127,7 @@ def sale_to_dict(sale: Sale) -> dict:
 
 
 def listing_to_dict(listing: Listing) -> dict:
-    item = listing.lot.order_item
+    info = lot_to_dict(listing.lot)
     return {
         "id": listing.id,
         "lot_id": listing.lot_id,
@@ -133,9 +135,9 @@ def listing_to_dict(listing: Listing) -> dict:
         "unit_price_eur_cents": listing.unit_price_eur_cents,
         "status": listing.status,
         "created_at": listing.created_at,
-        "name": item.normalized_name or item.raw_name,
-        "set_code": item.set_code,
-        "collector_number": item.collector_number,
-        "image_path": item.image_path,
+        "name": info["name"],
+        "set_code": info["set_code"],
+        "collector_number": info["collector_number"],
+        "image_path": info["image_path"],
         "available": listing.lot.available,
     }

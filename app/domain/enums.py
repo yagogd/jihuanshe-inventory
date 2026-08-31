@@ -36,6 +36,11 @@ class CostCategoryKind(str, Enum):
     CUSTOM = "custom"
 
 
+class LotSource(str, Enum):
+    RECEIVE = "RECEIVE"
+    MANUAL = "MANUAL"
+
+
 class AllocationMethod(str, Enum):
     BY_VALUE = "BY_VALUE"
     BY_QUANTITY = "BY_QUANTITY"

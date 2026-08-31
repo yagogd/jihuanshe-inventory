@@ -131,7 +131,7 @@ def _card_aggregates(db: Session) -> tuple[dict[str, int], dict[str, int], dict[
 
     lots = db.scalars(select(InventoryLot).options(selectinload(InventoryLot.order_item)))
     for lot in lots:
-        card_id = lot.order_item.card_id if lot.order_item else None
+        card_id = lot.card_id or (lot.order_item.card_id if lot.order_item else None)
         if card_id:
             stock[card_id] += lot.available
 
@@ -230,16 +230,17 @@ def card_detail(db: Session, card: Card) -> dict:
     for lot in db.scalars(
         select(InventoryLot)
         .options(selectinload(InventoryLot.order_item))
-        .where(InventoryLot.order_item.has(OrderItem.card_id == card.id))
+        .where(InventoryLot.card_id == card.id)
     ):
         lots.append(
             {
                 "id": lot.id,
                 "quantity": lot.quantity,
                 "available": lot.available,
-                "unit_cost_eur_cents": None,
+                "unit_cost_eur_cents": lot.unit_cost_eur_cents,
                 "condition": lot.order_item.condition if lot.order_item else None,
-                "image_path": lot.order_item.image_path if lot.order_item else None,
+                "image_path": lot.image_path
+                or (lot.order_item.image_path if lot.order_item else None),
             }
         )
 

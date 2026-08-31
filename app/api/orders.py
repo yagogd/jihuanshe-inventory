@@ -9,7 +9,7 @@ from app.db import get_db
 from app.domain.costs import compute_order_landed
 from app.domain.enums import OrderStatus
 from app.domain.models import Order, Shipment
-from app.domain.orders import persist_order
+from app.domain.orders import OrderEditError, persist_order
 from app.domain.orders import update_order as update_order_data
 from app.domain.schemas import LandedOut, OrderIn, OrderOut, OrderStatusIn
 
@@ -102,4 +102,7 @@ def update_order(order_id: str, payload: OrderIn, db: Session = Depends(get_db))
         )
         if duplicate is not None:
             raise HTTPException(status_code=409, detail="Ese número de pedido ya está guardado")
-    return update_order_data(db, order, payload)
+    try:
+        return update_order_data(db, order, payload)
+    except OrderEditError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

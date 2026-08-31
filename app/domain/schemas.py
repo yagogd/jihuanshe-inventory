@@ -17,6 +17,7 @@ from app.domain.enums import (
 
 
 class OrderItemIn(BaseModel):
+    id: str | None = None
     external_card_id: str | None = None
     raw_name: str
     normalized_name: str | None = None
@@ -45,6 +46,7 @@ class OrderItemOut(OrderItemIn):
 
 class OrderIn(BaseModel):
     jihuanshe_order_id: str | None = None
+    display_name: str | None = None
     seller: str | None = None
     purchase_date: str | None = None
     express_company: str | None = None
@@ -68,6 +70,7 @@ class OrderOut(BaseModel):
 
     id: str
     jihuanshe_order_id: str | None
+    display_name: str | None
     seller: str | None
     purchase_date: str | None
     express_company: str | None
@@ -195,9 +198,12 @@ class MovementOut(BaseModel):
 
 class InventoryLotOut(BaseModel):
     id: str
-    order_item_id: str
+    order_item_id: str | None
+    card_id: str | None
+    source: str
     name: str
-    raw_name: str
+    name_en: str | None = None
+    raw_name: str | None = None
     game: str | None = None
     set_code: str | None = None
     collector_number: str | None = None
@@ -207,9 +213,29 @@ class InventoryLotOut(BaseModel):
     image_path: str | None = None
     quantity: int
     available: int
-    order_id: str
+    unit_cost_eur_cents: int | None = None
+    note: str | None = None
+    order_id: str | None = None
     seller: str | None = None
     purchase_date: str | None = None
+
+
+class InventoryLotIn(BaseModel):
+    game: str | None = None
+    set_code: str | None = None
+    collector_number: str | None = None
+    name_zh: str | None = None
+    name_en: str | None = None
+    language: str | None = None
+    variant: str | None = None
+    foil: bool = False
+    promo: bool = False
+    condition: str | None = None
+    quantity: int = 1
+    amount: int = 0
+    currency: Currency = Currency.EUR
+    note: str | None = None
+    image_path: str | None = None
 
 
 class InventoryLotDetailOut(InventoryLotOut):

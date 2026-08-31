@@ -84,3 +84,73 @@ def test_split_and_movement_validation():
             ).status_code
             == 422
         )
+
+
+def test_manual_add_without_order():
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/inventory",
+            json={
+                "game": "Pokemon",
+                "set_code": "SVP",
+                "collector_number": "001",
+                "name_zh": "皮卡丘",
+                "name_en": "Pikachu",
+                "condition": "NM",
+                "quantity": 2,
+                "amount": 500,
+                "currency": "EUR",
+                "note": "Cardmarket",
+            },
+        )
+        assert created.status_code == 201, created.text
+        lot = created.json()
+        assert lot["source"] == "MANUAL"
+        assert lot["order_item_id"] is None
+        assert lot["available"] == 2
+        assert lot["name_en"] == "Pikachu"
+        assert lot["unit_cost_eur_cents"] == 250
+        assert lot["order_id"] is None
+
+        listing = client.get("/api/inventory", params={"q": "Pikachu"}).json()
+        assert len(listing) == 1
+        assert listing[0]["source"] == "MANUAL"
+
+
+def test_manual_add_requires_identity():
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/inventory", json={"name_zh": "Sin set", "quantity": 1, "amount": 100}
+        )
+        assert response.status_code == 422
+
+
+def test_update_order_keeps_lots():
+    with TestClient(app) as client:
+        order_id = _create_order(client, "InventarioDelta", 2)
+        _receive(client, order_id)
+
+        order = client.get(f"/api/orders/{order_id}").json()
+        item = order["items"][0]
+        original_item_id = item["id"]
+
+        payload = {
+            "seller": order["seller"],
+            "items": [
+                {
+                    "id": item["id"],
+                    "raw_name": "InventarioDelta",
+                    "normalized_name": "InventarioDelta editado",
+                    "quantity": 2,
+                    "unit_price_fen": 1000,
+                }
+            ],
+        }
+        updated = client.put(f"/api/orders/{order_id}", json=payload)
+        assert updated.status_code == 200, updated.text
+        assert updated.json()["items"][0]["id"] == original_item_id
+
+        lots = client.get("/api/inventory", params={"q": "InventarioDelta"}).json()
+        assert len(lots) == 1
+        assert lots[0]["available"] == 2
+

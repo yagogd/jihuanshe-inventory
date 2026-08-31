@@ -11,6 +11,8 @@ actual math only depends on the stored rate and, when present, the card charge.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -50,13 +52,17 @@ def convert_to_eur(amount: int, currency: str, db: Session, date: str | None = N
 
     ``currency`` is one of ``EUR``, ``CNY``, ``USD``. EUR is identity; the
     others use the ECB rate for ``date`` (today's latest when date is None).
+    Offline falls back to the settings fixed rate (CNY) or a rough constant (USD).
     """
     if currency == "EUR":
         return amount
     quote = "CNY" if currency == "CNY" else "USD"
+    if date is None:
+        date = datetime.now(timezone.utc).date().isoformat()
+    rate = _cached_or_fetch(db, date, quote)
+    if rate is not None:
+        return round(amount * rate)
     settings: AppSettings = get_app_settings(db)
-    if date:
-        rate = _cached_or_fetch(db, date, quote)
-        if rate is not None:
-            return round(amount * rate)
-    return round(amount * settings.fx_cny_eur)
+    if currency == "CNY":
+        return round(amount * settings.fx_cny_eur)
+    return round(amount * 0.92)
