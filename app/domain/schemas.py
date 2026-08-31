@@ -210,6 +210,9 @@ class InventoryLotOut(BaseModel):
     condition: str | None = None
     variant: str | None = None
     language: str | None = None
+    foil: bool = False
+    promo: bool = False
+    origin: str | None = None
     image_path: str | None = None
     quantity: int
     available: int

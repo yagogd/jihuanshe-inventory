@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { api, yuan2fen } from '../api.js'
+import { api, fen2yuan, yuan2fen } from '../api.js'
+import Badge from '../components/Badge.jsx'
 import Modal from '../components/Modal.jsx'
 
 const CURRENCIES = ['EUR', 'CNY', 'USD']
@@ -18,18 +19,50 @@ const emptyForm = () => ({
   image_path: null,
 })
 
+const emptyFilters = () => ({
+  q: '',
+  game: '',
+  set_code: '',
+  condition: '',
+  variant: '',
+  language: '',
+  source: '',
+  foil: '',
+  promo: '',
+  available_only: true,
+})
+
 export default function InventoryPage() {
   const [lots, setLots] = useState(null)
-  const [filters, setFilters] = useState({ q: '', available_only: true })
+  const [filters, setFilters] = useState(emptyFilters())
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [uploading, setUploading] = useState(false)
+  const [translating, setTranslating] = useState(false)
   const [modal, setModal] = useState(null)
+
+  function buildParams() {
+    const params = {
+      q: filters.q,
+      game: filters.game,
+      set_code: filters.set_code,
+      condition: filters.condition,
+      variant: filters.variant,
+      language: filters.language,
+      source: filters.source,
+      available_only: filters.available_only,
+    }
+    if (filters.foil === 'true') params.foil = true
+    else if (filters.foil === 'false') params.foil = false
+    if (filters.promo === 'true') params.promo = true
+    else if (filters.promo === 'false') params.promo = false
+    return params
+  }
 
   function load() {
     api
-      .listInventory(filters)
+      .listInventory(buildParams())
       .then(setLots)
       .catch((e) => setError(e.message))
   }
@@ -37,13 +70,7 @@ export default function InventoryPage() {
   useEffect(load, [filters])
 
   function openAction(lot, kind) {
-    setModal({
-      kind,
-      lot,
-      quantity: '1',
-      price: '',
-      fees: '0',
-    })
+    setModal({ kind, lot, quantity: '1', price: '', fees: '0' })
   }
 
   async function confirmAction() {
@@ -106,6 +133,20 @@ export default function InventoryPage() {
     }
   }
 
+  async function translateAll() {
+    setTranslating(true)
+    setError(null)
+    try {
+      const result = await api.translateCards()
+      setTranslating(false)
+      if (result.translated > 0) load()
+      else setError(`No quedan nombres por traducir (o no hay conexión).`)
+    } catch (e) {
+      setError(e.message)
+      setTranslating(false)
+    }
+  }
+
   if (error && !lots) return <div className="err">{error}</div>
   if (!lots) return <div className="muted">Cargando…</div>
 
@@ -113,27 +154,76 @@ export default function InventoryPage() {
     <div>
       <h1>Inventario</h1>
       {error && <div className="err">{error}</div>}
-      <div className="row" style={{ marginBottom: 16 }}>
+      <div className="row" style={{ marginBottom: 12 }}>
         <div className="field">
           <label>Buscar</label>
           <input
+            style={{ width: 220 }}
             value={filters.q}
             onChange={(e) => setFilters({ ...filters, q: e.target.value })}
-          />
-        </div>
-        <div className="field">
-          <label>Set</label>
-          <input
-            value={filters.set_code || ''}
-            onChange={(e) => setFilters({ ...filters, set_code: e.target.value })}
+            placeholder="Nombre, set, número…"
           />
         </div>
         <div className="field">
           <label>Juego</label>
           <input
-            value={filters.game || ''}
+            value={filters.game}
             onChange={(e) => setFilters({ ...filters, game: e.target.value })}
           />
+        </div>
+        <div className="field">
+          <label>Set</label>
+          <input
+            value={filters.set_code}
+            onChange={(e) => setFilters({ ...filters, set_code: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label>Condición</label>
+          <input
+            value={filters.condition}
+            onChange={(e) => setFilters({ ...filters, condition: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label>Idioma</label>
+          <input
+            value={filters.language}
+            onChange={(e) => setFilters({ ...filters, language: e.target.value })}
+          />
+        </div>
+        <div className="field">
+          <label>Origen</label>
+          <select
+            value={filters.source}
+            onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+          >
+            <option value="">Todos</option>
+            <option value="RECEIVE">Recibido (envío)</option>
+            <option value="MANUAL">Manual</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>Foil</label>
+          <select
+            value={filters.foil}
+            onChange={(e) => setFilters({ ...filters, foil: e.target.value })}
+          >
+            <option value="">Todos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>Promo</label>
+          <select
+            value={filters.promo}
+            onChange={(e) => setFilters({ ...filters, promo: e.target.value })}
+          >
+            <option value="">Todos</option>
+            <option value="true">Sí</option>
+            <option value="false">No</option>
+          </select>
         </div>
         <label className="field" style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
           <input
@@ -143,6 +233,10 @@ export default function InventoryPage() {
           />
           Solo disponibles
         </label>
+        <div style={{ flex: 1 }} />
+        <button className="secondary" onClick={translateAll} disabled={translating}>
+          {translating ? 'Traduciendo…' : 'Traducir nombres'}
+        </button>
         <button className="secondary" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Cancelar' : 'Añadir carta'}
         </button>
@@ -202,8 +296,11 @@ export default function InventoryPage() {
               <th>Nombre</th>
               <th>Set/Nº</th>
               <th>Cond.</th>
+              <th>Variante/Idioma</th>
+              <th>Foil/Promo</th>
               <th>Disp.</th>
               <th>Total</th>
+              <th>Coste €</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -216,7 +313,7 @@ export default function InventoryPage() {
                   )}
                 </td>
                 <td>
-                  {lot.name}
+                  <a href={`#/cards/${lot.card_id}`}>{lot.name}</a>
                   {lot.name_en && lot.name !== lot.name_en && (
                     <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
                   )}
@@ -225,10 +322,22 @@ export default function InventoryPage() {
                   {lot.set_code}·{lot.collector_number}
                 </td>
                 <td className="muted">{lot.condition || '—'}</td>
+                <td className="muted">
+                  {[lot.variant, lot.language].filter(Boolean).join(' · ') || '—'}
+                </td>
+                <td>
+                  {lot.foil && <Badge tone="warn">Foil</Badge>}{' '}
+                  {lot.promo && <Badge tone="neutral">Promo</Badge>}
+                </td>
                 <td>
                   <strong>{lot.available}</strong>
                 </td>
                 <td className="muted">{lot.quantity}</td>
+                <td className="muted">
+                  {lot.unit_cost_eur_cents == null
+                    ? '—'
+                    : fen2yuan(lot.unit_cost_eur_cents)}
+                </td>
                 <td>
                   <button className="secondary" onClick={() => openAction(lot, 'sell')}>
                     Vender
@@ -244,8 +353,8 @@ export default function InventoryPage() {
             ))}
             {lots.length === 0 && (
               <tr>
-                <td colSpan={7} className="muted">
-                  Sin inventario. Recibe un envío o añade cartas manualmente.
+                <td colSpan={10} className="muted">
+                  Sin cartas que coincidan con los filtros.
                 </td>
               </tr>
             )}

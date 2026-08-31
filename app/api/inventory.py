@@ -58,6 +58,11 @@ def list_inventory(
     game: str | None = None,
     set_code: str | None = None,
     condition: str | None = None,
+    variant: str | None = None,
+    language: str | None = None,
+    source: str | None = None,
+    foil: bool | None = None,
+    promo: bool | None = None,
     available_only: bool = False,
     db: Session = Depends(get_db),
 ) -> list[dict]:
@@ -75,13 +80,29 @@ def list_inventory(
     result = []
     for lot in lots:
         data = lot_to_dict(lot)
-        if q and q.lower() not in data["name"].lower() and q.lower() not in (data["raw_name"] or "").lower():
-            continue
+        if q:
+            needle = q.lower()
+            haystack = " ".join(
+                str(data[k] or "")
+                for k in ("name", "name_en", "raw_name", "game", "set_code", "collector_number", "variant")
+            ).lower()
+            if needle not in haystack:
+                continue
         if game and data["game"] != game:
             continue
         if set_code and data["set_code"] != set_code:
             continue
         if condition and data["condition"] != condition:
+            continue
+        if variant and data["variant"] != variant:
+            continue
+        if language and data["language"] != language:
+            continue
+        if source and data["source"] != source:
+            continue
+        if foil is not None and data["foil"] != foil:
+            continue
+        if promo is not None and data["promo"] != promo:
             continue
         if available_only and data["available"] <= 0:
             continue

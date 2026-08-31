@@ -122,6 +122,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  translateCards: () => request('/cards/translate', { method: 'POST' }),
+  translateCard: (id) => request('/cards/' + id + '/translate', { method: 'POST' }),
   listCostCategories: () => request('/cost-categories'),
   createCostCategory: (body) =>
     request('/cost-categories', {

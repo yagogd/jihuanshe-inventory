@@ -154,3 +154,32 @@ def test_update_order_keeps_lots():
         assert len(lots) == 1
         assert lots[0]["available"] == 2
 
+
+def test_inventory_source_and_foil_filters():
+    with TestClient(app) as client:
+        client.post(
+            "/api/inventory",
+            json={
+                "game": "Pokemon",
+                "set_code": "FILT",
+                "collector_number": "007",
+                "name_zh": "过滤卡",
+                "name_en": "Filter Card",
+                "foil": True,
+                "quantity": 1,
+                "amount": 100,
+                "currency": "EUR",
+            },
+        )
+
+        manual = client.get("/api/inventory", params={"source": "MANUAL", "q": "Filter Card"}).json()
+        assert len(manual) == 1
+        assert manual[0]["foil"] is True
+
+        received = client.get("/api/inventory", params={"source": "RECEIVE", "q": "Filter Card"}).json()
+        assert len(received) == 0
+
+        foil = client.get("/api/inventory", params={"foil": "true", "q": "Filter Card"}).json()
+        assert len(foil) == 1
+
+

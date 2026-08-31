@@ -8,7 +8,6 @@ import ShipmentDetailPage from './pages/ShipmentDetailPage.jsx'
 import InventoryPage from './pages/InventoryPage.jsx'
 import SalesPage from './pages/SalesPage.jsx'
 import OverviewPage from './pages/OverviewPage.jsx'
-import CardsPage from './pages/CardsPage.jsx'
 import CardDetailPage from './pages/CardDetailPage.jsx'
 
 function useHash() {
@@ -30,8 +29,6 @@ export default function App() {
     view = <ShipmentsPage />
   } else if (hash.startsWith('#/cards/')) {
     view = <CardDetailPage id={hash.slice('#/cards/'.length)} />
-  } else if (hash === '#/cards') {
-    view = <CardsPage />
   } else if (hash === '#/inventory') {
     view = <InventoryPage />
   } else if (hash === '#/sales') {
@@ -49,7 +46,6 @@ export default function App() {
   const links = [
     ['#/overview', 'Resumen'],
     ['#/', 'Importar'],
-    ['#/cards', 'Cartas'],
     ['#/orders', 'Órdenes'],
     ['#/shipments', 'Envíos'],
     ['#/inventory', 'Inventario'],

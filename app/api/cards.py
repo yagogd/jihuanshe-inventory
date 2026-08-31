@@ -8,6 +8,7 @@ from app.db import get_db
 from app.domain.cards import card_detail, list_cards, rename_card
 from app.domain.models import Card
 from app.domain.schemas import CardDetailOut, CardNameIn, CardOut
+from app.domain.translate import translate_all, translate_card
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 
@@ -19,6 +20,11 @@ def _load(card_id: str, db: Session) -> Card:
     return card
 
 
+@router.post("/translate")
+def translate_cards_endpoint(db: Session = Depends(get_db)) -> dict:
+    return {"translated": translate_all(db)}
+
+
 @router.get("", response_model=list[CardOut])
 def list_cards_endpoint(
     q: str | None = None,
@@ -27,6 +33,13 @@ def list_cards_endpoint(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     return list_cards(db, q=q, sort=sort, order=order)
+
+
+@router.post("/{card_id}/translate", response_model=CardOut)
+def translate_card_endpoint(card_id: str, db: Session = Depends(get_db)) -> dict:
+    card = _load(card_id, db)
+    translate_card(db, card)
+    return card_detail(db, card)
 
 
 @router.get("/{card_id}", response_model=CardDetailOut)

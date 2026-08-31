@@ -29,6 +29,19 @@ export default function CardDetailPage({ id }) {
     }
   }
 
+  async function translate() {
+    setError(null)
+    setSaved(false)
+    try {
+      const updated = await api.translateCard(id)
+      setCard(updated)
+      setNameEn(updated.name_en || '')
+      setSaved(true)
+    } catch (e) {
+      setError(e.message)
+    }
+  }
+
   if (error) return <div className="err">{error}</div>
   if (!card) return <div className="muted">Cargando…</div>
 
@@ -60,6 +73,9 @@ export default function CardDetailPage({ id }) {
               />
               <button className="secondary" onClick={saveName}>
                 Guardar
+              </button>
+              <button className="secondary" onClick={translate}>
+                Traducir
               </button>
             </div>
           </div>
