@@ -6,10 +6,12 @@ name is stored as scraped; the English name is filled once (see
 """
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from collections import defaultdict
 
-from app.domain.models import Card, OrderItem
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.domain.models import Card, InventoryLot, OrderItem
 
 
 def card_identity(
@@ -108,3 +110,147 @@ def backfill_cards(db: Session) -> int:
     if linked:
         db.commit()
     return linked
+
+
+_SORT_KEYS = {
+    "name_en": lambda c: (c["name_en"] or c["name_zh"] or "").lower(),
+    "name_zh": lambda c: (c["name_zh"] or "").lower(),
+    "set_code": lambda c: (c["set_code"] or "").lower(),
+    "collector_number": lambda c: (c["collector_number"] or "").lower(),
+    "game": lambda c: (c["game"] or "").lower(),
+    "stock_qty": lambda c: c["stock_qty"],
+    "avg_price": lambda c: c["avg_price_eur_cents"] if c["avg_price_eur_cents"] is not None else -1,
+}
+
+
+def _card_aggregates(db: Session) -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
+    """Return (stock, purchased_qty, purchased_value) keyed by card id."""
+    stock: dict[str, int] = defaultdict(int)
+    purchased_qty: dict[str, int] = defaultdict(int)
+    purchased_value: dict[str, int] = defaultdict(int)
+
+    lots = db.scalars(select(InventoryLot).options(selectinload(InventoryLot.order_item)))
+    for lot in lots:
+        card_id = lot.order_item.card_id if lot.order_item else None
+        if card_id:
+            stock[card_id] += lot.available
+
+    items = db.scalars(select(OrderItem).options(selectinload(OrderItem.order)))
+    for item in items:
+        if item.card_id is None:
+            continue
+        purchased_qty[item.card_id] += item.quantity
+        fx = item.order.fx_cny_eur if item.order else 0.13
+        purchased_value[item.card_id] += round(item.unit_price_fen * item.quantity * fx)
+
+    return stock, purchased_qty, purchased_value
+
+
+def card_to_dict(card: Card, stock: int, qty: int, value: int) -> dict:
+    return {
+        "id": card.id,
+        "game": card.game,
+        "set_code": card.set_code,
+        "collector_number": card.collector_number,
+        "name_zh": card.name_zh,
+        "name_en": card.name_en,
+        "language": card.language,
+        "variant": card.variant,
+        "foil": card.foil,
+        "promo": card.promo,
+        "image_path": card.image_path,
+        "stock_qty": stock,
+        "total_qty": qty,
+        "avg_price_eur_cents": round(value / qty) if qty else None,
+    }
+
+
+def list_cards(
+    db: Session,
+    q: str | None = None,
+    sort: str = "name_en",
+    order: str = "asc",
+) -> list[dict]:
+    stock, purchased_qty, purchased_value = _card_aggregates(db)
+
+    result = []
+    needle = (q or "").strip().lower()
+    for card in db.scalars(select(Card)):
+        data = card_to_dict(
+            card,
+            stock.get(card.id, 0),
+            purchased_qty.get(card.id, 0),
+            purchased_value.get(card.id, 0),
+        )
+        if needle:
+            haystack = " ".join(
+                str(data[k] or "")
+                for k in ("name_en", "name_zh", "set_code", "collector_number", "game")
+            ).lower()
+            if needle not in haystack:
+                continue
+        result.append(data)
+
+    key = _SORT_KEYS.get(sort, _SORT_KEYS["name_en"])
+    result.sort(key=key, reverse=order == "desc")
+    return result
+
+
+def card_detail(db: Session, card: Card) -> dict:
+    stock, purchased_qty, purchased_value = _card_aggregates(db)
+    data = card_to_dict(
+        card,
+        stock.get(card.id, 0),
+        purchased_qty.get(card.id, 0),
+        purchased_value.get(card.id, 0),
+    )
+
+    purchases = []
+    for item in db.scalars(
+        select(OrderItem)
+        .options(selectinload(OrderItem.order))
+        .where(OrderItem.card_id == card.id)
+        .order_by(OrderItem.position)
+    ):
+        purchases.append(
+            {
+                "id": item.id,
+                "order_id": item.order.id if item.order else "",
+                "seller": item.order.seller if item.order else None,
+                "purchase_date": item.order.purchase_date if item.order else None,
+                "quantity": item.quantity,
+                "unit_price_fen": item.unit_price_fen,
+                "fx_cny_eur": item.order.fx_cny_eur if item.order else 0.13,
+                "condition": item.condition,
+                "image_path": item.image_path,
+            }
+        )
+
+    lots = []
+    for lot in db.scalars(
+        select(InventoryLot)
+        .options(selectinload(InventoryLot.order_item))
+        .where(InventoryLot.order_item.has(OrderItem.card_id == card.id))
+    ):
+        lots.append(
+            {
+                "id": lot.id,
+                "quantity": lot.quantity,
+                "available": lot.available,
+                "unit_cost_eur_cents": None,
+                "condition": lot.order_item.condition if lot.order_item else None,
+                "image_path": lot.order_item.image_path if lot.order_item else None,
+            }
+        )
+
+    data["purchases"] = purchases
+    data["lots"] = lots
+    return data
+
+
+def rename_card(db: Session, card: Card, name_en: str | None) -> Card:
+    if name_en is not None:
+        card.name_en = name_en.strip() or None
+    db.commit()
+    db.refresh(card)
+    return card

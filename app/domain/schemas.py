@@ -250,6 +250,55 @@ class OverviewOut(BaseModel):
     roi_pct: float
 
 
+class CardOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    game: str | None
+    set_code: str | None
+    collector_number: str | None
+    name_zh: str | None
+    name_en: str | None
+    language: str | None
+    variant: str | None
+    foil: bool
+    promo: bool
+    image_path: str | None
+    stock_qty: int
+    total_qty: int
+    avg_price_eur_cents: int | None
+
+
+class CardPurchaseOut(BaseModel):
+    id: str
+    order_id: str
+    seller: str | None
+    purchase_date: str | None
+    quantity: int
+    unit_price_fen: int
+    fx_cny_eur: float
+    condition: str | None
+    image_path: str | None
+
+
+class CardLotOut(BaseModel):
+    id: str
+    quantity: int
+    available: int
+    unit_cost_eur_cents: int | None
+    condition: str | None
+    image_path: str | None
+
+
+class CardDetailOut(CardOut):
+    purchases: list[CardPurchaseOut]
+    lots: list[CardLotOut]
+
+
+class CardNameIn(BaseModel):
+    name_en: str | None = None
+
+
 class ImportStatusOut(BaseModel):
     available: bool
     detected: bool

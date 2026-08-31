@@ -107,6 +107,21 @@ export const api = {
   removeListing: (id) => request('/listings/' + id + '/remove', { method: 'POST' }),
   listSales: () => request('/sales'),
   getOverview: () => request('/overview'),
+  listCards: (params) => {
+    const qs = new URLSearchParams()
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value !== undefined && value !== null && value !== '') qs.set(key, value)
+    }
+    const s = qs.toString()
+    return request('/cards' + (s ? '?' + s : ''))
+  },
+  getCard: (id) => request('/cards/' + id),
+  updateCard: (id, body) =>
+    request('/cards/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
 }
 
 export const fen2yuan = (fen) => (fen / 100).toFixed(2)
