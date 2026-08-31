@@ -30,7 +30,8 @@ function toForm(order) {
     purchase_date: order.purchase_date || '', express_company: order.express_company || '',
     express_tracking: order.express_tracking || '', domestic_shipping: fen2yuan(order.domestic_shipping_fen),
     alipay_fee: order.alipay_fee_fen == null ? '' : fen2yuan(order.alipay_fee_fen),
-    total_paid: fen2yuan(order.total_paid_fen), fx_cny_eur: String(order.fx_cny_eur),
+    total_paid: fen2yuan(order.total_paid_fen),
+    card_charged: order.card_charged_eur_cents == null ? '' : fen2yuan(order.card_charged_eur_cents),
     cost_method: order.cost_method || 'BY_VALUE',
     items: order.items.map((item) => ({ ...item, unit_price: fen2yuan(item.unit_price_fen) })),
   }
@@ -71,7 +72,7 @@ export default function OrderDetailPage({ id }) {
         domestic_shipping_fen: yuan2fen(form.domestic_shipping),
         alipay_fee_fen: form.alipay_fee === '' ? null : yuan2fen(form.alipay_fee),
         total_paid_fen: form.total_paid === '' ? null : yuan2fen(form.total_paid),
-        fx_cny_eur: parseFloat(form.fx_cny_eur) || 0,
+        card_charged_eur_cents: form.card_charged === '' ? null : yuan2fen(form.card_charged),
         cost_method: form.cost_method,
         items: form.items.map((item, index) => ({
           raw_name: item.raw_name || item.normalized_name, normalized_name: item.normalized_name || item.raw_name,
@@ -117,7 +118,16 @@ export default function OrderDetailPage({ id }) {
         <Field label="Envío doméstico ¥" value={form.domestic_shipping} set={(value) => setForm({ ...form, domestic_shipping: value })} />
         <Field label="Fee Alipay ¥" value={form.alipay_fee} set={(value) => setForm({ ...form, alipay_fee: value })} />
         <Field label="Total pagado ¥" value={form.total_paid} set={(value) => setForm({ ...form, total_paid: value })} />
-        <Field label="FX CNY→EUR" value={form.fx_cny_eur} set={(value) => setForm({ ...form, fx_cny_eur: value })} />
+        <Field label="Cargo en tarjeta €" value={form.card_charged} set={(value) => setForm({ ...form, card_charged: value })} />
+        <div className="field">
+          <label>FX CNY→EUR</label>
+          <span>
+            {order.fx_cny_eur}
+            <span className={order.card_charged_eur_cents != null ? 'ok' : 'warn'} style={{ marginLeft: 6 }}>
+              {order.card_charged_eur_cents != null ? 'confirmado' : 'estimado'}
+            </span>
+          </span>
+        </div>
       </div>
       <div className="row" style={{ marginTop: 12 }}>
         <div className="field">

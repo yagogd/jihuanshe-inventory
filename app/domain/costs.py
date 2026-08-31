@@ -79,6 +79,20 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
     domestic_alloc = allocate_largest_remainder(cny_weights, order.domestic_shipping_fen)
     alipay_alloc = allocate_largest_remainder(cny_weights, order.alipay_fee_fen or 0)
 
+    # CNY→EUR conversion. When the bank charge is known exactly, the total of
+    # the converted block is scaled to that charge (largest remainder), so the
+    # landed cost reflects what was really paid instead of an estimate.
+    cny_totals = [
+        item.unit_price_fen * item.quantity + domestic_alloc[pos] + alipay_alloc[pos]
+        for pos, item in enumerate(items)
+    ]
+    if order.card_charged_eur_cents is not None:
+        cny_to_eur_allocs = allocate_largest_remainder(
+            cny_totals, order.card_charged_eur_cents
+        )
+    else:
+        cny_to_eur_allocs = [round(total * order.fx_cny_eur) for total in cny_totals]
+
     shipment_alloc: dict[ShipmentCostType, list[int]] = {}
     index_by_item: dict[int, int] = {}
     if shipment is not None:
@@ -95,13 +109,14 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
         domestic = domestic_alloc[position]
         alipay = alipay_alloc[position]
         cny_total = purchase + domestic + alipay
-        cny_eur = round(cny_total * order.fx_cny_eur)
 
         parts = {field: 0 for field in _TYPE_FIELD.values()}
         index = index_by_item.get(id(item))
         for cost_type, allocs in shipment_alloc.items():
             parts[_TYPE_FIELD[cost_type]] = allocs[index] if index is not None else 0
         eur = sum(parts.values())
+
+        cny_eur = cny_to_eur_allocs[position]
         landed = cny_eur + eur
         total_landed += landed
 
@@ -126,6 +141,8 @@ def compute_order_landed(order: Order, shipment: Shipment | None = None) -> dict
     return {
         "order_id": order.id,
         "fx_cny_eur": order.fx_cny_eur,
+        "fx_source": order.fx_source,
+        "card_charged_eur_cents": order.card_charged_eur_cents,
         "items": result_items,
         "total_landed_eur_cents": total_landed,
     }

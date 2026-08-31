@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.config import get_settings
 from app.domain.cards import resolve_card
 from app.domain.enums import AllocationMethod, OrderStatus
+from app.domain.fx import resolve_cny_eur
 from app.domain.models import AppSettings, Order, OrderItem
 from app.domain.schemas import OrderIn
 from app.domain.settings import get_app_settings
@@ -31,8 +32,8 @@ def suggest_alipay_fee(
 
 
 def _alipay_and_fx(
-    payload: OrderIn, subtotal: int, domestic: int, app_settings: AppSettings
-) -> tuple[int, float]:
+    db: Session, payload: OrderIn, subtotal: int, domestic: int, app_settings: AppSettings
+) -> tuple[int, float, str]:
     alipay = (
         payload.alipay_fee_fen
         if payload.alipay_fee_fen is not None
@@ -40,15 +41,23 @@ def _alipay_and_fx(
             subtotal, domestic, app_settings.alipay_fee_threshold_fen, app_settings.alipay_fee_rate
         )
     )
-    fx = payload.fx_cny_eur if payload.fx_cny_eur is not None else app_settings.fx_cny_eur
-    return alipay, fx
+    if payload.card_charged_eur_cents is not None:
+        fx = (
+            payload.fx_cny_eur
+            if payload.fx_cny_eur is not None
+            else app_settings.fx_cny_eur
+        )
+        return alipay, fx, "card"
+    if payload.fx_cny_eur is not None:
+        return alipay, payload.fx_cny_eur, "fixed"
+    return alipay, *resolve_cny_eur(db, payload.purchase_date)
 
 
 def persist_order(db: Session, payload: OrderIn) -> Order:
     app_settings = get_app_settings(db)
     subtotal = sum(item.unit_price_fen * item.quantity for item in payload.items)
     domestic = payload.domestic_shipping_fen or 0
-    alipay, fx = _alipay_and_fx(payload, subtotal, domestic, app_settings)
+    alipay, fx, fx_source = _alipay_and_fx(db, payload, subtotal, domestic, app_settings)
     total = (
         payload.total_paid_fen
         if payload.total_paid_fen is not None
@@ -66,7 +75,8 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
         alipay_fee_fen=alipay,
         total_paid_fen=total,
         fx_cny_eur=fx,
-        fx_source=payload.fx_source or "manual",
+        fx_source=fx_source,
+        card_charged_eur_cents=payload.card_charged_eur_cents,
         cost_method=payload.cost_method or AllocationMethod.BY_VALUE,
         status=OrderStatus.PURCHASED,
     )
@@ -148,7 +158,7 @@ def update_order(db: Session, order: Order, payload: OrderIn) -> Order:
     app_settings = get_app_settings(db)
     subtotal = sum(item.unit_price_fen * item.quantity for item in payload.items)
     domestic = payload.domestic_shipping_fen or 0
-    alipay, fx = _alipay_and_fx(payload, subtotal, domestic, app_settings)
+    alipay, fx, fx_source = _alipay_and_fx(db, payload, subtotal, domestic, app_settings)
 
     order.jihuanshe_order_id = payload.jihuanshe_order_id
     order.seller = payload.seller
@@ -164,7 +174,8 @@ def update_order(db: Session, order: Order, payload: OrderIn) -> Order:
         else subtotal + domestic + alipay
     )
     order.fx_cny_eur = fx
-    order.fx_source = payload.fx_source or order.fx_source or "manual"
+    order.fx_source = fx_source
+    order.card_charged_eur_cents = payload.card_charged_eur_cents
     order.cost_method = payload.cost_method or order.cost_method or AllocationMethod.BY_VALUE
 
     order.items.clear()

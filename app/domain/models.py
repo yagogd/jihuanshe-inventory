@@ -56,6 +56,20 @@ class AppSettings(Base):
     alipay_fee_threshold_fen: Mapped[int] = mapped_column(Integer, default=20000)
     alipay_fee_rate: Mapped[float] = mapped_column(Float, default=0.03)
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
+    fx_mode: Mapped[str] = mapped_column(String, default="historical")
+
+
+class FxRate(Base):
+    """Cached EUR exchange rate for a single date, so we never re-fetch it."""
+
+    __tablename__ = "fx_rates"
+    __table_args__ = (UniqueConstraint("date", "quote", name="uq_fx_rate"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    date: Mapped[str] = mapped_column(String)
+    quote: Mapped[str] = mapped_column(String)
+    rate: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class Card(Base):
@@ -111,6 +125,7 @@ class Order(Base):
 
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
     fx_source: Mapped[str] = mapped_column(String, default="manual")
+    card_charged_eur_cents: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost_method: Mapped[AllocationMethod] = mapped_column(
         SAEnum(AllocationMethod, native_enum=False), default=AllocationMethod.BY_VALUE
     )

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_extractor
+from app.domain.fx import resolve_cny_eur
 from app.domain.orders import suggest_alipay_fee
 from app.domain.schemas import ImportPreviewOut, ImportStatusOut, OrderItemIn
 from app.domain.settings import get_app_settings
@@ -27,6 +28,7 @@ def _build_preview(preview: CapturePreview, db: Session) -> ImportPreviewOut:
         app_settings.alipay_fee_threshold_fen,
         app_settings.alipay_fee_rate,
     )
+    fx, fx_source = resolve_cny_eur(db, order.purchase_date)
 
     items = [
         OrderItemIn(
@@ -63,7 +65,8 @@ def _build_preview(preview: CapturePreview, db: Session) -> ImportPreviewOut:
         domestic_shipping_fen=order.domestic_shipping_fen,
         declared_total_paid_fen=order.total_paid_fen,
         suggested_alipay_fee_fen=suggested,
-        fx_cny_eur=app_settings.fx_cny_eur,
+        fx_cny_eur=fx,
+        fx_source=fx_source,
         items=items,
         raw_dumps=preview.raw_dumps,
         warnings=preview.warnings,

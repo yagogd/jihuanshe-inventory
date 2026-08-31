@@ -54,6 +54,7 @@ class OrderIn(BaseModel):
     total_paid_fen: int | None = None
     fx_cny_eur: float | None = None
     fx_source: str | None = None
+    card_charged_eur_cents: int | None = None
     cost_method: AllocationMethod | None = None
     items: list[OrderItemIn]
     session_id: str | None = None
@@ -77,6 +78,7 @@ class OrderOut(BaseModel):
     total_paid_fen: int
     fx_cny_eur: float
     fx_source: str
+    card_charged_eur_cents: int | None
     cost_method: AllocationMethod
     status: OrderStatus
     items: list[OrderItemOut]
@@ -90,12 +92,14 @@ class SettingsOut(BaseModel):
     alipay_fee_threshold_fen: int
     alipay_fee_rate: float
     fx_cny_eur: float
+    fx_mode: str
 
 
 class SettingsIn(BaseModel):
     alipay_fee_threshold_fen: int | None = None
     alipay_fee_rate: float | None = None
     fx_cny_eur: float | None = None
+    fx_mode: str | None = None
 
 
 class OrderStatusIn(BaseModel):
@@ -150,6 +154,8 @@ class LandedItemOut(BaseModel):
 class LandedOut(BaseModel):
     order_id: str
     fx_cny_eur: float
+    fx_source: str
+    card_charged_eur_cents: int | None
     items: list[LandedItemOut]
     total_landed_eur_cents: int
 
@@ -323,6 +329,7 @@ class ImportPreviewOut(BaseModel):
     declared_total_paid_fen: int | None = None
     suggested_alipay_fee_fen: int = 0
     fx_cny_eur: float = 0.13
+    fx_source: str = "fixed"
     items: list[OrderItemIn] = []
     raw_dumps: list[str] = []
     warnings: list[str] = []

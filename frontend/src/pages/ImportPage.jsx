@@ -50,7 +50,6 @@ export default function ImportPage() {
       express_company: data.express_company || '',
       express_tracking: data.express_tracking || '',
       domestic_shipping: data.domestic_shipping_fen != null ? fen2yuan(data.domestic_shipping_fen) : '0',
-      fx_cny_eur: data.fx_cny_eur != null ? String(data.fx_cny_eur) : '0.13',
       total_paid:
         data.declared_total_paid_fen != null ? fen2yuan(data.declared_total_paid_fen) : '',
       items: data.items.map((item) => ({
@@ -104,7 +103,6 @@ export default function ImportPage() {
         express_company: form.express_company || null,
         express_tracking: form.express_tracking || null,
         domestic_shipping_fen: yuan2fen(form.domestic_shipping),
-        fx_cny_eur: parseFloat(form.fx_cny_eur) || 0,
         total_paid_fen: form.total_paid ? yuan2fen(form.total_paid) : null,
         items: form.items.map((item, index) => ({
           raw_name: item.raw_name || item.normalized_name,
@@ -231,13 +229,6 @@ export default function ImportPage() {
               />
             </div>
             <div className="field">
-              <label>FX CNY→EUR</label>
-              <input
-                value={form.fx_cny_eur}
-                onChange={(e) => setForm({ ...form, fx_cny_eur: e.target.value })}
-              />
-            </div>
-            <div className="field">
               <label>Total pagado (¥) — vacío = auto</label>
               <input
                 value={form.total_paid}
@@ -348,6 +339,11 @@ export default function ImportPage() {
             )}
             <div>
               Fee Alipay sugerido: <strong>{fen2yuan(preview.suggested_alipay_fee_fen)} ¥</strong>
+            </div>
+            <div>
+              FX CNY→EUR:{' '}
+              <strong>{preview.fx_cny_eur}</strong>{' '}
+              <span className="warn">(estimado)</span>
             </div>
           </div>
 

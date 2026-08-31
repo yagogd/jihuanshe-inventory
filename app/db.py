@@ -64,11 +64,15 @@ def _migrate() -> None:
             "express_tracking": "VARCHAR",
             "shipment_id": "VARCHAR",
             "cost_method": "VARCHAR",
+            "card_charged_eur_cents": "INTEGER",
         },
     )
     add_columns("order_items", {"card_id": "VARCHAR"})
+    add_columns("settings", {"fx_mode": "VARCHAR"})
     with engine.begin() as conn:
         conn.execute(text("UPDATE orders SET cost_method = 'BY_VALUE' WHERE cost_method IS NULL"))
+        conn.execute(text("UPDATE settings SET fx_mode = 'historical' WHERE fx_mode IS NULL"))
+        conn.execute(text("UPDATE orders SET fx_source = 'fixed' WHERE fx_source = 'manual'"))
 
 
 def _backfill_cards() -> None:

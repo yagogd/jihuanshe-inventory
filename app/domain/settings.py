@@ -24,6 +24,7 @@ def get_app_settings(db: Session) -> AppSettings:
             alipay_fee_threshold_fen=config.alipay_fee_threshold_fen,
             alipay_fee_rate=config.alipay_fee_rate,
             fx_cny_eur=config.fx_cny_eur,
+            fx_mode="historical",
         )
         db.add(row)
         db.commit()
@@ -39,6 +40,8 @@ def update_app_settings(db: Session, payload: SettingsIn) -> AppSettings:
         row.alipay_fee_rate = payload.alipay_fee_rate
     if payload.fx_cny_eur is not None:
         row.fx_cny_eur = payload.fx_cny_eur
+    if payload.fx_mode is not None:
+        row.fx_mode = payload.fx_mode
     db.commit()
     db.refresh(row)
     return row
