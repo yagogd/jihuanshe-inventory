@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
+import Modal from '../components/Modal.jsx'
 
 export default function SalesPage() {
   const [lots, setLots] = useState([])
@@ -7,6 +8,7 @@ export default function SalesPage() {
   const [sales, setSales] = useState(null)
   const [error, setError] = useState(null)
   const [form, setForm] = useState({ lot_id: '', quantity: '1', price: '' })
+  const [selling, setSelling] = useState(null)
 
   function load() {
     api.listInventory({ available_only: true }).then(setLots).catch((e) => setError(e.message))
@@ -31,18 +33,17 @@ export default function SalesPage() {
     }
   }
 
-  async function sellListing(listing) {
-    const raw = window.prompt(`Vender del listado (cantidad disponible: ${listing.quantity})`, listing.quantity)
-    if (raw == null) return
-    const quantity = parseInt(raw, 10)
+  async function confirmSell() {
+    const quantity = parseInt(selling.quantity, 10)
     if (!quantity) return
     setError(null)
     try {
-      await api.sellListing(listing.id, {
+      await api.sellListing(selling.listing.id, {
         quantity,
-        unit_price_eur_cents: listing.unit_price_eur_cents,
+        unit_price_eur_cents: selling.listing.unit_price_eur_cents,
         fees_eur_cents: 0,
       })
+      setSelling(null)
       load()
     } catch (e) {
       setError(e.message)
@@ -126,7 +127,10 @@ export default function SalesPage() {
                 <td>
                   {listing.status === 'ACTIVE' && (
                     <>
-                      <button className="secondary" onClick={() => sellListing(listing)}>
+                      <button
+                        className="secondary"
+                        onClick={() => setSelling({ listing, quantity: String(listing.quantity) })}
+                      >
                         Vender
                       </button>{' '}
                       <button className="secondary" onClick={() => removeListing(listing)}>
@@ -188,6 +192,31 @@ export default function SalesPage() {
           </tbody>
         </table>
       </div>
+
+      {selling && (
+        <Modal
+          title={`Vender · ${selling.listing.name}`}
+          onClose={() => setSelling(null)}
+          actions={
+            <>
+              <button className="secondary" onClick={() => setSelling(null)}>
+                Cancelar
+              </button>
+              <button onClick={confirmSell}>Confirmar</button>
+            </>
+          }
+        >
+          <div className="field">
+            <label>Cantidad (disponible: {selling.listing.quantity})</label>
+            <input
+              type="number"
+              min="1"
+              value={selling.quantity}
+              onChange={(e) => setSelling({ ...selling, quantity: e.target.value })}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

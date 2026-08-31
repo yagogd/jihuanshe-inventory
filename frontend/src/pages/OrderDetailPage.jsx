@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
+import Badge from '../components/Badge.jsx'
 
 const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
 const METHODS = ['BY_VALUE', 'BY_QUANTITY', 'MANUAL']
@@ -127,8 +128,12 @@ export default function OrderDetailPage({ id }) {
           <label>FX CNY→EUR</label>
           <span>
             {order.fx_cny_eur}
-            <span className={order.card_charged_eur_cents != null ? 'ok' : 'warn'} style={{ marginLeft: 6 }}>
-              {order.card_charged_eur_cents != null ? 'confirmado' : 'estimado'}
+            <span style={{ marginLeft: 6 }}>
+              {order.card_charged_eur_cents != null ? (
+                <Badge tone="ok">confirmado</Badge>
+              ) : (
+                <Badge tone="warn">estimado</Badge>
+              )}
             </span>
           </span>
         </div>

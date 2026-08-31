@@ -45,17 +45,37 @@ export default function App() {
   } else if (hash === '#/settings') {
     view = <SettingsPage />
   }
+
+  const links = [
+    ['#/overview', 'Resumen'],
+    ['#/', 'Importar'],
+    ['#/cards', 'Cartas'],
+    ['#/orders', 'Órdenes'],
+    ['#/shipments', 'Envíos'],
+    ['#/inventory', 'Inventario'],
+    ['#/sales', 'Ventas'],
+    ['#/settings', 'Ajustes'],
+  ]
+
+  const isActive = (href) => {
+    if (href === '#/') return hash === '' || hash === '#/' || hash === '#'
+    return hash === href || hash.startsWith(href + '/')
+  }
+
   return (
     <div className="app">
+      <header className="app-header">
+        <a className="brand" href="#/overview">
+          <span className="logo">J</span>
+          Jihuanshe Tracker
+        </a>
+      </header>
       <nav>
-        <a href="#/overview">Resumen</a>
-        <a href="#/">Importar</a>
-        <a href="#/cards">Cartas</a>
-        <a href="#/orders">Órdenes</a>
-        <a href="#/shipments">Envíos</a>
-        <a href="#/inventory">Inventario</a>
-        <a href="#/sales">Ventas</a>
-        <a href="#/settings">Ajustes</a>
+        {links.map(([href, label]) => (
+          <a key={href} href={href} className={isActive(href) ? 'active' : ''}>
+            {label}
+          </a>
+        ))}
       </nav>
       {view}
     </div>

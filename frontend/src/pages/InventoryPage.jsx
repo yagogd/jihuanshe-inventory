@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { api, fen2yuan, yuan2fen } from '../api.js'
+import { api, yuan2fen } from '../api.js'
+import Modal from '../components/Modal.jsx'
 
 const CURRENCIES = ['EUR', 'CNY', 'USD']
 
@@ -24,6 +25,7 @@ export default function InventoryPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [uploading, setUploading] = useState(false)
+  const [modal, setModal] = useState(null)
 
   function load() {
     api
@@ -34,30 +36,27 @@ export default function InventoryPage() {
 
   useEffect(load, [filters])
 
-  async function act(lot, kind, label) {
-    const raw = window.prompt(`${label} cantidad (disponible: ${lot.available})`)
-    if (raw == null) return
-    const quantity = parseInt(raw, 10)
-    if (!quantity) return
+  function openAction(lot, kind) {
+    setModal({
+      kind,
+      lot,
+      quantity: '1',
+      price: '',
+      fees: '0',
+    })
+  }
+
+  async function confirmAction() {
+    const { kind, lot } = modal
+    const quantity = parseInt(modal.quantity, 10)
+    if (!quantity || quantity < 1) return
     setError(null)
     try {
       if (kind === 'split') await api.splitLot(lot.id, quantity)
-      else await api.addLotMovement(lot.id, kind, quantity)
-      load()
-    } catch (e) {
-      setError(e.message)
-    }
-  }
-
-  async function sell(lot) {
-    const qty = window.prompt(`Vender cantidad (disponible: ${lot.available})`, '1')
-    if (qty == null) return
-    const price = window.prompt('Precio de venta por unidad (€)', '')
-    if (price == null) return
-    const fees = window.prompt('Comisiones/fees totales (€)', '0')
-    setError(null)
-    try {
-      await api.sellLot(lot.id, parseInt(qty, 10) || 1, yuan2fen(price), yuan2fen(fees || '0'))
+      else if (kind === 'GRADE') await api.addLotMovement(lot.id, 'GRADE', quantity)
+      else if (kind === 'sell')
+        await api.sellLot(lot.id, quantity, yuan2fen(modal.price), yuan2fen(modal.fees || '0'))
+      setModal(null)
       load()
     } catch (e) {
       setError(e.message)
@@ -195,62 +194,113 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th>Nombre</th>
-            <th>Set/Nº</th>
-            <th>Cond.</th>
-            <th>Disp.</th>
-            <th>Total</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lots.map((lot) => (
-            <tr key={lot.id}>
-              <td>
-                {lot.image_path && (
-                  <img className="thumb" src={`/images/${lot.image_path}`} alt="" />
-                )}
-              </td>
-              <td>
-                {lot.name}
-                {lot.name_en && lot.name !== lot.name_en && (
-                  <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
-                )}
-              </td>
-              <td className="muted">
-                {lot.set_code}·{lot.collector_number}
-              </td>
-              <td className="muted">{lot.condition || '—'}</td>
-              <td>
-                <strong>{lot.available}</strong>
-              </td>
-              <td className="muted">{lot.quantity}</td>
-              <td>
-                <button className="secondary" onClick={() => sell(lot)}>
-                  Vender
-                </button>{' '}
-                <button className="secondary" onClick={() => act(lot, 'GRADE', 'Grading')}>
-                  Grading
-                </button>{' '}
-                <button className="secondary" onClick={() => act(lot, 'split', 'Dividir')}>
-                  Dividir
-                </button>
-              </td>
-            </tr>
-          ))}
-          {lots.length === 0 && (
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table>
+          <thead>
             <tr>
-              <td colSpan={7} className="muted">
-                Sin inventario. Recibe un envío o añade cartas manualmente.
-              </td>
+              <th></th>
+              <th>Nombre</th>
+              <th>Set/Nº</th>
+              <th>Cond.</th>
+              <th>Disp.</th>
+              <th>Total</th>
+              <th>Acciones</th>
             </tr>
+          </thead>
+          <tbody>
+            {lots.map((lot) => (
+              <tr key={lot.id}>
+                <td>
+                  {lot.image_path && (
+                    <img className="thumb" src={`/images/${lot.image_path}`} alt="" />
+                  )}
+                </td>
+                <td>
+                  {lot.name}
+                  {lot.name_en && lot.name !== lot.name_en && (
+                    <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
+                  )}
+                </td>
+                <td className="muted">
+                  {lot.set_code}·{lot.collector_number}
+                </td>
+                <td className="muted">{lot.condition || '—'}</td>
+                <td>
+                  <strong>{lot.available}</strong>
+                </td>
+                <td className="muted">{lot.quantity}</td>
+                <td>
+                  <button className="secondary" onClick={() => openAction(lot, 'sell')}>
+                    Vender
+                  </button>{' '}
+                  <button className="secondary" onClick={() => openAction(lot, 'GRADE')}>
+                    Grading
+                  </button>{' '}
+                  <button className="secondary" onClick={() => openAction(lot, 'split')}>
+                    Dividir
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {lots.length === 0 && (
+              <tr>
+                <td colSpan={7} className="muted">
+                  Sin inventario. Recibe un envío o añade cartas manualmente.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {modal && (
+        <Modal
+          title={
+            modal.kind === 'sell'
+              ? `Vender · ${modal.lot.name}`
+              : modal.kind === 'GRADE'
+                ? `Grading · ${modal.lot.name}`
+                : `Dividir · ${modal.lot.name}`
+          }
+          onClose={() => setModal(null)}
+          actions={
+            <>
+              <button className="secondary" onClick={() => setModal(null)}>
+                Cancelar
+              </button>
+              <button onClick={confirmAction}>Confirmar</button>
+            </>
+          }
+        >
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>Cantidad (disponible: {modal.lot.available})</label>
+            <input
+              type="number"
+              min="1"
+              value={modal.quantity}
+              onChange={(e) => setModal({ ...modal, quantity: e.target.value })}
+            />
+          </div>
+          {modal.kind === 'sell' && (
+            <>
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label>Precio de venta por unidad (€)</label>
+                <input
+                  value={modal.price}
+                  onChange={(e) => setModal({ ...modal, price: e.target.value })}
+                />
+              </div>
+              <div className="field">
+                <label>Comisiones/fees totales (€)</label>
+                <input
+                  value={modal.fees}
+                  onChange={(e) => setModal({ ...modal, fees: e.target.value })}
+                />
+              </div>
+            </>
           )}
-        </tbody>
-      </table>
+        </Modal>
+      )}
     </div>
   )
 }
