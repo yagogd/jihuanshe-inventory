@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
 from app.domain.costs import compute_order_landed
 from app.domain.enums import OrderStatus
-from app.domain.models import Order, Shipment
+from app.domain.models import Order, OrderItem, Shipment
 from app.domain.orders import OrderEditError, persist_order
 from app.domain.orders import update_order as update_order_data
 from app.domain.schemas import LandedOut, OrderIn, OrderOut, OrderStatusIn
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
+_ORDER_LOAD = selectinload(Order.items).selectinload(OrderItem.card)
 
 
 @router.post("", response_model=OrderOut, status_code=201)
@@ -34,7 +36,7 @@ def create_order(payload: OrderIn, db: Session = Depends(get_db)) -> Order:
 def list_orders(
     status: OrderStatus | None = None, db: Session = Depends(get_db)
 ) -> list[Order]:
-    stmt = select(Order).options(selectinload(Order.items)).order_by(Order.created_at.desc())
+    stmt = select(Order).options(_ORDER_LOAD).order_by(Order.created_at.desc())
     if status is not None:
         stmt = stmt.where(Order.status == status)
     return list(db.scalars(stmt))
@@ -43,7 +45,7 @@ def list_orders(
 @router.get("/{order_id}", response_model=OrderOut)
 def get_order(order_id: str, db: Session = Depends(get_db)) -> Order:
     order = db.scalar(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+        select(Order).options(_ORDER_LOAD).where(Order.id == order_id)
     )
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
@@ -53,7 +55,7 @@ def get_order(order_id: str, db: Session = Depends(get_db)) -> Order:
 @router.get("/{order_id}/landed", response_model=LandedOut)
 def order_landed(order_id: str, db: Session = Depends(get_db)) -> dict:
     order = db.scalar(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+        select(Order).options(_ORDER_LOAD).where(Order.id == order_id)
     )
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
@@ -64,7 +66,7 @@ def order_landed(order_id: str, db: Session = Depends(get_db)) -> dict:
             select(Shipment)
             .options(
                 selectinload(Shipment.costs),
-                selectinload(Shipment.orders).selectinload(Order.items),
+                selectinload(Shipment.orders).selectinload(Order.items).selectinload(OrderItem.card),
             )
             .where(Shipment.id == order.shipment_id)
         )
@@ -76,7 +78,7 @@ def set_order_status(
     order_id: str, payload: OrderStatusIn, db: Session = Depends(get_db)
 ) -> Order:
     order = db.scalar(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+        select(Order).options(_ORDER_LOAD).where(Order.id == order_id)
     )
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
@@ -89,7 +91,7 @@ def set_order_status(
 @router.put("/{order_id}", response_model=OrderOut)
 def update_order(order_id: str, payload: OrderIn, db: Session = Depends(get_db)) -> Order:
     order = db.scalar(
-        select(Order).options(selectinload(Order.items)).where(Order.id == order_id)
+        select(Order).options(_ORDER_LOAD).where(Order.id == order_id)
     )
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.domain.inventory import receive_shipment
-from app.domain.models import CostCategory, Order, Shipment, ShipmentCost
+from app.domain.models import CostCategory, Order, OrderItem, Shipment, ShipmentCost
 from app.domain.schemas import (
     CostCategoryIn,
     CostCategoryOut,
@@ -51,7 +51,7 @@ def list_shipments(db: Session = Depends(get_db)) -> list[dict]:
             select(Shipment)
             .options(
                 selectinload(Shipment.costs).selectinload(ShipmentCost.category),
-                selectinload(Shipment.orders).selectinload(Order.items),
+                selectinload(Shipment.orders).selectinload(Order.items).selectinload(OrderItem.card),
             )
             .order_by(Shipment.created_at.desc())
         )

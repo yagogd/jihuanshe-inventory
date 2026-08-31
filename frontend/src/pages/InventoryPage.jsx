@@ -297,7 +297,6 @@ export default function InventoryPage() {
               <th>Nombre</th>
               <th>Set/Nº</th>
               <th>Cond.</th>
-              <th>Variante/Idioma</th>
               <th>Foil/Promo</th>
               <th>Disp.</th>
               <th>Total</th>
@@ -326,9 +325,6 @@ export default function InventoryPage() {
                   {lot.set_code}·{lot.collector_number}
                 </td>
                 <td className="muted">{lot.condition || '—'}</td>
-                <td className="muted">
-                  {[lot.variant, lot.language].filter(Boolean).join(' · ') || '—'}
-                </td>
                 <td>
                   {lot.foil && <Badge tone="warn">Foil</Badge>}{' '}
                   {lot.promo && <Badge tone="neutral">Promo</Badge>}
@@ -363,7 +359,7 @@ export default function InventoryPage() {
             ))}
             {lots.length === 0 && (
               <tr>
-                <td colSpan={10} className="muted">
+                <td colSpan={9} className="muted">
                   Sin cartas que coincidan con los filtros.
                 </td>
               </tr>

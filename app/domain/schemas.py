@@ -42,6 +42,7 @@ class OrderItemOut(OrderItemIn):
 
     id: str
     normalized_name: str
+    name_en: str | None = None
 
 
 class OrderIn(BaseModel):
@@ -274,6 +275,7 @@ class ListingOut(BaseModel):
     status: ListingStatus
     created_at: datetime
     name: str
+    name_en: str | None = None
     set_code: str | None = None
     collector_number: str | None = None
     image_path: str | None = None
@@ -289,6 +291,7 @@ class SaleOut(BaseModel):
     landed_unit_eur_cents: int
     sold_at: datetime
     name: str
+    name_en: str | None = None
     set_code: str | None = None
     collector_number: str | None = None
     revenue_eur_cents: int

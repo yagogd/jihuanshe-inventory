@@ -207,6 +207,10 @@ class OrderItem(Base):
         back_populates="order_item", cascade="all, delete-orphan"
     )
 
+    @property
+    def name_en(self) -> str | None:
+        return self.card.name_en if self.card else None
+
 
 class Shipment(Base):
     __tablename__ = "shipments"

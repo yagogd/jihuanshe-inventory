@@ -6,7 +6,7 @@ for a batch translation of everything still missing.
 """
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -55,7 +55,7 @@ def translate_all(db: Session) -> int:
     cards = list(
         db.scalars(
             select(Card)
-            .where(Card.name_en.is_(None))
+            .where(or_(Card.name_en.is_(None), Card.name_en == ""))
             .where(Card.name_zh.is_not(None))
         )
     )

@@ -67,6 +67,13 @@ def list_inventory(
     available_only: bool = False,
     db: Session = Depends(get_db),
 ) -> list[dict]:
+    def _contains(value, needle):
+        if not needle:
+            return True
+        if value is None:
+            return False
+        return needle.lower() in str(value).lower()
+
     result = []
     for data in list_inventory_entries(db):
         if q:
@@ -77,15 +84,15 @@ def list_inventory(
             ).lower()
             if needle not in haystack:
                 continue
-        if game and data["game"] != game:
+        if not _contains(data["game"], game):
             continue
-        if set_code and data["set_code"] != set_code:
+        if not _contains(data["set_code"], set_code):
             continue
-        if condition and data["condition"] != condition:
+        if not _contains(data["condition"], condition):
             continue
-        if variant and data["variant"] != variant:
+        if not _contains(data["variant"], variant):
             continue
-        if language and data["language"] != language:
+        if not _contains(data["language"], language):
             continue
         if source and data["source"] != source:
             continue

@@ -34,10 +34,11 @@ def translate_zh_to_en(text: str, timeout: float = 3.0) -> str | None:
         return None
     source = text.strip()
     for provider in (_google, _mymemory):
-        try:
-            translated = provider(source, timeout)
-        except Exception:
-            continue
-        if translated and translated.strip() and translated.strip() != source:
-            return translated.strip()
+        for attempt in range(2):
+            try:
+                translated = provider(source, timeout)
+            except Exception:
+                continue
+            if translated and translated.strip() and translated.strip() != source:
+                return translated.strip()
     return None

@@ -117,7 +117,12 @@ export default function SalesPage() {
           <tbody>
             {(listings || []).map((listing) => (
               <tr key={listing.id}>
-                <td>{listing.name}</td>
+                <td>
+                  {listing.name}
+                  {listing.name_en && (
+                    <div className="muted" style={{ fontSize: 12 }}>{listing.name_en}</div>
+                  )}
+                </td>
                 <td className="muted">
                   {listing.set_code}·{listing.collector_number}
                 </td>
@@ -169,7 +174,12 @@ export default function SalesPage() {
           <tbody>
             {(sales || []).map((sale) => (
               <tr key={sale.id}>
-                <td>{sale.name}</td>
+                <td>
+                  {sale.name}
+                  {sale.name_en && (
+                    <div className="muted" style={{ fontSize: 12 }}>{sale.name_en}</div>
+                  )}
+                </td>
                 <td className="muted">
                   {sale.set_code}·{sale.collector_number}
                 </td>

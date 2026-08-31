@@ -103,6 +103,10 @@ export default function OrderDetailPage({ id }) {
 
   if (!order || !form) return error ? <div className="err">{error}</div> : <div className="muted">Cargando…</div>
 
+  const nameEnById = Object.fromEntries(
+    form.items.map((item) => [item.id, item.name_en]).filter(([, nameEn]) => nameEn)
+  )
+
   return <div>
     <h1>Editar orden</h1>
     <div className="card">
@@ -168,7 +172,10 @@ export default function OrderDetailPage({ id }) {
     <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Promo</th><th></th></tr></thead>
       <tbody>{form.items.map((item, index) => <tr key={item.id || index}>
         <td>{item.image_path && <img className="thumb" src={`/images/${item.image_path}`} alt="" />}</td>
-        <td><input value={item.normalized_name} title={item.raw_name} onChange={(e) => updateItem(index, { normalized_name: e.target.value })} /></td>
+        <td>
+          <input value={item.normalized_name} title={item.raw_name} onChange={(e) => updateItem(index, { normalized_name: e.target.value })} />
+          {item.name_en && <div className="muted" style={{ fontSize: 12 }}>{item.name_en}</div>}
+        </td>
         <td><input type="number" min="1" style={{ width: 60 }} value={item.quantity} onChange={(e) => updateItem(index, { quantity: e.target.value })} /></td>
         <td><input style={{ width: 75 }} value={item.unit_price} onChange={(e) => updateItem(index, { unit_price: e.target.value })} /></td>
         <td><input style={{ width: 75 }} value={item.set_code || ''} onChange={(e) => updateItem(index, { set_code: e.target.value })} /></td>
@@ -199,7 +206,12 @@ export default function OrderDetailPage({ id }) {
           <tbody>
             {landed.items.map((item) => (
               <tr key={item.item_id}>
-                <td>{item.name}</td>
+                <td>
+                  {item.name}
+                  {nameEnById[item.item_id] && (
+                    <div className="muted" style={{ fontSize: 12 }}>{nameEnById[item.item_id]}</div>
+                  )}
+                </td>
                 <td>{fen2yuan(item.cny_eur_cents)}</td>
                 <td>{fen2yuan(item.shipment_eur_cents)}</td>
                 <td>{fen2yuan(item.landed_eur_cents)}</td>
