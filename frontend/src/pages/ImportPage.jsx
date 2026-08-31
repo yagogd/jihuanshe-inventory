@@ -210,6 +210,20 @@ export default function ImportPage() {
               />
             </div>
             <div className="field">
+              <label>Transportista</label>
+              <input
+                value={form.express_company}
+                onChange={(e) => setForm({ ...form, express_company: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label>Nº seguimiento</label>
+              <input
+                value={form.express_tracking}
+                onChange={(e) => setForm({ ...form, express_tracking: e.target.value })}
+              />
+            </div>
+            <div className="field">
               <label>Envío doméstico (¥)</label>
               <input
                 value={form.domestic_shipping}
@@ -231,12 +245,6 @@ export default function ImportPage() {
               />
             </div>
           </div>
-
-          {(form.express_company || form.express_tracking) && (
-            <div className="muted" style={{ marginBottom: 12 }}>
-              Envío doméstico: {form.express_company} {form.express_tracking}
-            </div>
-          )}
 
           <table>
             <thead>

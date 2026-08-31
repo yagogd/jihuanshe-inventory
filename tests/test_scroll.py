@@ -46,7 +46,7 @@ def _item(name, num, price="10", qty="x1", precious="Promo"):
     return cv
 
 
-def _header_dump(seller="卖家X", order_id="20260001"):
+def _header_dump(seller="卖家X", order_id="20260001", company="顺丰速运", tracking="SF1575562409202"):
     root = ET.Element("hierarchy")
     top = ET.SubElement(root, "node", {"package": "com.jihuanshe", "text": "", "resource-id": ""})
     ET.SubElement(top, "node", {"text": "订单详情", "resource-id": ""})
@@ -56,6 +56,11 @@ def _header_dump(seller="卖家X", order_id="20260001"):
     ET.SubElement(top, "node", {"text": order_id, "resource-id": ""})
     ET.SubElement(top, "node", {"resource-id": "com.jihuanshe:id/orderTimeTv", "text": "交易时间："})
     ET.SubElement(top, "node", {"text": "2026-08-04 00:06:34", "resource-id": ""})
+    express = ET.SubElement(
+        top, "node", {"resource-id": "com.jihuanshe:id/expressContent", "text": ""}
+    )
+    ET.SubElement(express, "node", {"text": company, "resource-id": ""})
+    ET.SubElement(express, "node", {"text": tracking, "resource-id": ""})
     return ET.tostring(root, encoding="utf-8").decode("utf-8")
 
 
@@ -113,6 +118,8 @@ def test_full_scroll_captures_header_items_and_footer(tmp_path):
     assert preview.detected is True
     assert preview.order.seller == "卖家X"
     assert preview.order.jihuanshe_order_id == "20260001"
+    assert preview.order.express_company == "顺丰速运"
+    assert preview.order.express_tracking == "SF1575562409202"
     assert [i.raw_name for i in preview.order.items] == ["A", "B", "C", "D", "E"]
     assert preview.order.domestic_shipping_fen == 1800
     assert preview.order.subtotal_fen == 102500
@@ -132,6 +139,8 @@ def test_capture_from_middle_seeks_header_and_footer(tmp_path):
     assert preview.order.seller == "卖家Y"
     assert preview.order.jihuanshe_order_id == "20260002"
     assert preview.order.purchase_date == "2026-08-04 00:06:34"
+    assert preview.order.express_company == "顺丰速运"
+    assert preview.order.express_tracking == "SF1575562409202"
     assert [i.raw_name for i in preview.order.items] == ["A", "B"]
     assert preview.order.reached_footer is True
 
