@@ -313,9 +313,9 @@ export default function InventoryPage() {
                   )}
                 </td>
                 <td>
-                  <a href={`#/cards/${lot.card_id}`}>{lot.name}</a>
-                  {lot.name_en && lot.name !== lot.name_en && (
-                    <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
+                  <a href={`#/cards/${lot.card_id}`}>{lot.name_en || lot.name}</a>
+                  {lot.raw_name && lot.name_en && lot.raw_name !== (lot.name_en || lot.name) && (
+                    <div className="muted" style={{ fontSize: 12 }}>{lot.raw_name}</div>
                   )}
                 </td>
                 <td className="muted">
