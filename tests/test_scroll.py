@@ -120,7 +120,7 @@ def test_full_scroll_captures_header_items_and_footer(tmp_path):
     assert preview.order.reached_footer is True
 
 
-def test_capture_from_middle_continues_without_slow_top_seek(tmp_path):
+def test_capture_from_middle_seeks_header_and_footer(tmp_path):
     a = [_item("A", "001"), _item("B", "002")]
     screens = [
         _header_dump(seller="卖家Y", order_id="20260002"),
@@ -129,8 +129,11 @@ def test_capture_from_middle_continues_without_slow_top_seek(tmp_path):
     ]
     extractor = UIAutomatorExtractor(FakeAdb(screens, start=1), _settings(tmp_path))
     preview = extractor.preview(auto_scroll=True)
-    assert preview.order.seller is None
+    assert preview.order.seller == "卖家Y"
+    assert preview.order.jihuanshe_order_id == "20260002"
+    assert preview.order.purchase_date == "2026-08-04 00:06:34"
     assert [i.raw_name for i in preview.order.items] == ["A", "B"]
+    assert preview.order.reached_footer is True
 
 
 def test_stuck_stops_without_footer(tmp_path):

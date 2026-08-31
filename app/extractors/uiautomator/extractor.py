@@ -75,27 +75,53 @@ class UIAutomatorExtractor:
         """Capture the current order.
 
         ``auto_scroll=False`` captures a single screen (manual mode building
-        block). ``auto_scroll=True`` drives the scroll automatically.
+        block). ``auto_scroll=True`` seeks up to the header (seller, order id,
+        purchase date), then drives the scroll down through the items to the
+        footer.
         """
         if not self._adb_ok():
             return CapturePreview(detected=False, error="ADB no disponible o sin dispositivo")
 
         session = start_session(self.settings)
 
-        # The capture action is launched from a freshly opened order. Ingest
-        # that first viewport once, then start moving immediately. Previously
-        # we searched for the top and captured the same viewport again, which
-        # accounted for most of the delay before the first visible swipe.
+        # Ingest the first viewport for its header/screen metadata only. Items
+        # are captured in a single downward pass so the positional merge stays
+        # consistent; the header seek and item pass must not interleave.
         xml, shot = self.capture_current(verify_image=False)
         if not xml:
             return session.to_preview()
-        session.ingest(xml, shot)
-        if session.footer["reached"] and session.footer["total_paid_fen"] is not None:
-            return session.to_preview()
-        self.adb.swipe_up()
-        time.sleep(0.2)
-        self._scroll_to_bottom(session)
+        session.ingest(xml, shot, with_items=not auto_scroll)
+
+        if auto_scroll:
+            self._scroll_to_header(session)
+            self._scroll_to_bottom(session)
+
         return session.to_preview()
+
+    def _scroll_to_header(self, session: CaptureSession) -> None:
+        """Scroll up to the order header to capture seller, order id and date."""
+        prev_xml: str | None = None
+        stuck = 0
+        for _ in range(self.settings.max_scrolls):
+            if (
+                session.header.seller
+                and session.header.jihuanshe_order_id
+                and session.header.purchase_date
+            ):
+                break
+            self.adb.swipe_down()
+            time.sleep(0.2)
+            xml, _shot = self.capture_current(with_image=False)
+            if not xml:
+                break
+            if xml == prev_xml:
+                stuck += 1
+                if stuck >= 2:
+                    break
+            else:
+                stuck = 0
+            prev_xml = xml
+            session.ingest(xml, None, with_items=False)
 
     def _scroll_to_bottom(self, session: CaptureSession) -> None:
         prev_xml: str | None = None
