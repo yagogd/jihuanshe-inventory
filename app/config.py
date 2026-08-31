@@ -1,12 +1,14 @@
 """Configuration and runtime settings.
 
-Everything here is read once and cached. No device-specific or business
-logic lives here beyond defaults that can be overridden via environment
-variables.
+Everything here is read once and cached. Values come from, in order of
+precedence: real environment variables, an optional ``.env`` file in the
+project root, then built-in defaults. No device-specific or business logic
+lives here.
 """
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -14,15 +16,32 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
+def _load_dotenv(path: Path) -> None:
+    """Load ``KEY=VALUE`` lines from a file, never overriding the environment."""
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        if key and key not in os.environ:
+            os.environ[key] = value.strip()
+
+
+_load_dotenv(PROJECT_ROOT / ".env")
+
+
 def _default_adb_path() -> str:
-    candidates = [
+    for candidate in (
         os.environ.get("JIHUANSHE_ADB"),
         str(PROJECT_ROOT / "platform-tools" / "adb.exe"),
-    ]
-    for candidate in candidates:
+    ):
         if candidate and Path(candidate).exists():
             return candidate
-    return "adb"
+    from_path = shutil.which("adb")
+    return from_path or "adb"
 
 
 @dataclass(frozen=True)

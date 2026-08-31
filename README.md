@@ -21,13 +21,18 @@ cd frontend
 npm install
 ```
 
-Si `adb` no está disponible en `PATH`, configura su ruta antes de iniciar el backend:
+La aplicación busca `adb` en este orden: variable `JIHUANSHE_ADB`, archivo
+`.env`, carpeta `platform-tools/` del proyecto y, por último, el `PATH` del
+sistema. La forma más sencilla es copiar la plantilla y editar la ruta:
 
 ```powershell
-$env:JIHUANSHE_ADB = "C:\Android\platform-tools\adb.exe"
+Copy-Item .env.example .env
+notepad .env
 ```
 
-Las demás opciones disponibles aparecen en [.env.example](.env.example). La aplicación lee variables de entorno; no carga el archivo `.env` automáticamente.
+Las demás opciones disponibles también aparecen en [.env.example](.env.example).
+La aplicación lee el archivo `.env` automáticamente; las variables de entorno
+reales tienen prioridad sobre él.
 
 ## Ejecución
 
