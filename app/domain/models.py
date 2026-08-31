@@ -9,7 +9,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, select
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    select,
+)
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, object_session, relationship
 
@@ -46,6 +56,42 @@ class AppSettings(Base):
     alipay_fee_threshold_fen: Mapped[int] = mapped_column(Integer, default=20000)
     alipay_fee_rate: Mapped[float] = mapped_column(Float, default=0.03)
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
+
+
+class Card(Base):
+    """Catalog identity of a card, unique by ``(game, set_code, collector_number)``.
+
+    The Chinese name is the scraped source of truth; ``name_en`` is a best-effort
+    translation cached here so it is only ever looked up once. Price, quantity
+    and condition never live here: those belong to purchases and lots.
+    """
+
+    __tablename__ = "cards"
+    __table_args__ = (
+        UniqueConstraint("game", "set_code", "collector_number", name="uq_card_identity"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    game: Mapped[str | None] = mapped_column(String, nullable=True)
+    set_code: Mapped[str | None] = mapped_column(String, nullable=True)
+    collector_number: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    name_zh: Mapped[str | None] = mapped_column(String, nullable=True)
+    name_en: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    language: Mapped[str | None] = mapped_column(String, nullable=True)
+    variant: Mapped[str | None] = mapped_column(String, nullable=True)
+    foil: Mapped[bool] = mapped_column(Boolean, default=False)
+    promo: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    image_path: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
+
+    items: Mapped[list["OrderItem"]] = relationship(back_populates="card")
 
 
 class Order(Base):
@@ -110,6 +156,9 @@ class OrderItem(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     order_id: Mapped[str] = mapped_column(String(36), ForeignKey("orders.id"), index=True)
+    card_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("cards.id"), nullable=True, index=True
+    )
 
     external_card_id: Mapped[str | None] = mapped_column(String, nullable=True)
     raw_name: Mapped[str] = mapped_column(String)
@@ -135,6 +184,7 @@ class OrderItem(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
 
     order: Mapped["Order"] = relationship(back_populates="items")
+    card: Mapped["Card | None"] = relationship(back_populates="items")
     lots: Mapped[list["InventoryLot"]] = relationship(
         back_populates="order_item", cascade="all, delete-orphan"
     )

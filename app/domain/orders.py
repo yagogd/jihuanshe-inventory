@@ -12,10 +12,12 @@ import json
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.domain.cards import resolve_card
 from app.domain.enums import AllocationMethod, OrderStatus
 from app.domain.models import AppSettings, Order, OrderItem
 from app.domain.schemas import OrderIn
 from app.domain.settings import get_app_settings
+from app.domain.translate import translate_cards
 from app.infra.images import relocate_images
 
 
@@ -70,8 +72,21 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
     )
 
     for position, item in enumerate(payload.items):
+        card = resolve_card(
+            db,
+            game=item.game,
+            set_code=item.set_code,
+            collector_number=item.collector_number,
+            raw_name=item.raw_name,
+            language=item.language,
+            variant=item.variant,
+            foil=item.foil,
+            promo=item.promo,
+            image_path=item.image_path,
+        )
         order.items.append(
             OrderItem(
+                card_id=card.id if card is not None else None,
                 external_card_id=item.external_card_id,
                 raw_name=item.raw_name,
                 normalized_name=item.normalized_name or item.raw_name,
@@ -119,6 +134,12 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
 
     db.commit()
     db.refresh(order)
+
+    if get_settings().auto_translate:
+        cards = [item.card for item in order.items if item.card is not None]
+        if cards:
+            translate_cards(db, cards)
+            db.commit()
     return order
 
 

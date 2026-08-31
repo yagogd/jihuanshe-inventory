@@ -33,6 +33,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _migrate()
+    _backfill_cards()
 
 
 def _migrate() -> None:
@@ -65,5 +66,14 @@ def _migrate() -> None:
             "cost_method": "VARCHAR",
         },
     )
+    add_columns("order_items", {"card_id": "VARCHAR"})
     with engine.begin() as conn:
         conn.execute(text("UPDATE orders SET cost_method = 'BY_VALUE' WHERE cost_method IS NULL"))
+
+
+def _backfill_cards() -> None:
+    """Link pre-existing order items to catalog Cards (see domain.cards)."""
+    from app.domain.cards import backfill_cards
+
+    with SessionLocal() as session:
+        backfill_cards(session)

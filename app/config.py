@@ -53,6 +53,7 @@ class Settings:
     fx_cny_eur: float
     capture_images: bool
     max_scrolls: int
+    auto_translate: bool
 
     @property
     def images_dir(self) -> Path:
@@ -82,4 +83,6 @@ def get_settings() -> Settings:
         fx_cny_eur=float(os.environ.get("JIHUANSHE_FX_CNY_EUR", 0.13)),
         capture_images=os.environ.get("JIHUANSHE_CAPTURE_IMAGES", "1") not in ("0", "false", "False"),
         max_scrolls=int(os.environ.get("JIHUANSHE_MAX_SCROLLS", 80)),
+        auto_translate=os.environ.get("JIHUANSHE_AUTO_TRANSLATE", "1")
+        not in ("0", "false", "False"),
     )

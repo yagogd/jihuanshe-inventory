@@ -100,6 +100,7 @@ def _settings(tmp_path):
         fx_cny_eur=0.13,
         capture_images=False,
         max_scrolls=80,
+        auto_translate=False,
     )
 
 

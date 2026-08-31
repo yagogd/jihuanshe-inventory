@@ -14,3 +14,4 @@ _test_data = tempfile.mkdtemp(prefix="jihuanshe_test_")
 os.environ["JIHUANSHE_DATA_DIR"] = _test_data
 os.environ["JIHUANSHE_ADB"] = "adb"
 os.environ["JIHUANSHE_CAPTURE_IMAGES"] = "1"
+os.environ["JIHUANSHE_AUTO_TRANSLATE"] = "0"
