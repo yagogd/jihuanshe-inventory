@@ -7,14 +7,14 @@ received shipment keep an optional ``order_item_id`` for audit; manual lots
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session, object_session, selectinload
 
 from app.domain.cards import resolve_card
 from app.domain.conditions import normalize_condition
 from app.domain.costs import compute_order_landed
 from app.domain.enums import LotSource, MovementKind, ShipmentStatus
 from app.domain.fx import convert_to_eur
-from app.domain.models import InventoryLot, LotMovement, OrderItem, Shipment
+from app.domain.models import InventoryLot, LotMovement, Order, OrderItem, Shipment, ShipmentCost
 from app.domain.schemas import InventoryLotIn
 
 _MANUAL_KINDS = {MovementKind.SELL, MovementKind.GRADE}
@@ -150,6 +150,32 @@ def add_movement(db: Session, lot: InventoryLot, kind: MovementKind, quantity: i
     return movement
 
 
+def current_lot_unit_cost(lot: InventoryLot) -> int | None:
+    """Return the current landed unit cost for this exact inventory lot."""
+    if lot.order_item is None or lot.order_item.order is None:
+        return lot.unit_cost_eur_cents
+    db = object_session(lot)
+    if db is None:
+        return lot.unit_cost_eur_cents
+    item = lot.order_item
+    order = item.order
+    shipment = None
+    if order.shipment_id:
+        shipment = db.scalar(
+            select(Shipment)
+            .options(
+                selectinload(Shipment.costs).selectinload(ShipmentCost.category),
+                selectinload(Shipment.orders).selectinload(Order.items),
+            )
+            .where(Shipment.id == order.shipment_id)
+        )
+    landed = compute_order_landed(order, shipment)
+    entry = next((row for row in landed["items"] if row["item_id"] == item.id), None)
+    if entry is None or not item.quantity:
+        return lot.unit_cost_eur_cents
+    return round(entry["landed_eur_cents"] / item.quantity)
+
+
 def lot_to_dict(lot: InventoryLot) -> dict:
     card = lot.card
     item = lot.order_item
@@ -174,10 +200,11 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         seller = item.order.seller
         purchase_date = item.order.purchase_date
 
+    unit_cost_eur = current_lot_unit_cost(lot)
     fx = item.order.fx_cny_eur if item and item.order else 0.13
     unit_cost_cny = (
-        round(lot.unit_cost_eur_cents / fx)
-        if lot.unit_cost_eur_cents is not None and fx > 0
+        round(unit_cost_eur / fx)
+        if unit_cost_eur is not None and fx > 0
         else None
     )
 
@@ -203,7 +230,7 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         "image_path": image_path,
         "quantity": lot.quantity,
         "available": lot.available,
-        "unit_cost_eur_cents": lot.unit_cost_eur_cents,
+        "unit_cost_eur_cents": unit_cost_eur,
         "unit_cost_cny_fen": unit_cost_cny,
         "note": lot.note,
         "order_id": order_id,

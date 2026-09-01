@@ -155,6 +155,35 @@ def test_update_order_keeps_lots():
         assert lots[0]["available"] == 2
 
 
+def test_inventory_exposes_recalculated_landed_cost_after_shipment_edit():
+    with TestClient(app) as client:
+        order_id = _create_order(client, "InventarioCosteActual", 1)
+        international = next(
+            row["id"] for row in client.get("/api/cost-categories").json()
+            if row["name"] == "Internacional"
+        )
+        shipment = client.post(
+            "/api/shipments", json={"order_ids": [order_id], "costs": []}
+        ).json()
+        client.post(f"/api/shipments/{shipment['id']}/receive")
+
+        before = client.get(
+            "/api/inventory", params={"q": "InventarioCosteActual"}
+        ).json()[0]
+        updated = client.put(f"/api/shipments/{shipment['id']}", json={
+            "status": "RECEIVED",
+            "order_ids": [order_id],
+            "total_paid_eur_cents": 500,
+            "costs": [{"category_id": international, "amount": 500, "currency": "EUR"}],
+        })
+        assert updated.status_code == 200, updated.text
+
+        after = client.get(
+            "/api/inventory", params={"q": "InventarioCosteActual"}
+        ).json()[0]
+        assert after["unit_cost_eur_cents"] == before["unit_cost_eur_cents"] + 500
+
+
 def test_inventory_source_and_foil_filters():
     with TestClient(app) as client:
         client.post(
@@ -198,6 +227,5 @@ def test_scanned_cards_appear_as_pending():
         lots = client.get("/api/inventory", params={"q": "CartaPendiente"}).json()
         assert lots[0]["source"] == "RECEIVE"
         assert lots[0]["available"] == 3
-
 
 

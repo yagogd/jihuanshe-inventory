@@ -13,7 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domain.costs import compute_order_landed
-from app.domain.models import Card, InventoryLot, Order, OrderItem, Shipment, ShipmentCost
+from app.domain.models import Card, InventoryLot, Listing, Order, OrderItem, Sale, Shipment, ShipmentCost
 
 
 def card_identity(
@@ -291,6 +291,44 @@ def card_detail(db: Session, card: Card) -> dict:
 
     data["purchases"] = purchases
     data["lots"] = lots
+    lot_ids = [lot.id for lot in db.scalars(select(InventoryLot).where(InventoryLot.card_id == card.id))]
+    data["listings"] = [
+        {
+            "id": listing.id, "lot_id": listing.lot_id, "card_id": card.id,
+            "quantity": listing.quantity,
+            "unit_price_eur_cents": listing.unit_price_eur_cents,
+            "purchase_cost_eur_cents": listing.lot.unit_cost_eur_cents,
+            "marketplace": listing.marketplace, "status": listing.status,
+            "created_at": listing.created_at, "name": data["name_zh"] or "(sin nombre)",
+            "name_en": data["name_en"], "set_code": data["set_code"],
+            "collector_number": data["collector_number"], "image_path": data["image_path"],
+            "available": listing.lot.available,
+        }
+        for listing in db.scalars(
+            select(Listing).options(selectinload(Listing.lot))
+            .where(Listing.lot_id.in_(lot_ids)).order_by(Listing.created_at.desc())
+        )
+    ] if lot_ids else []
+    data["sales"] = []
+    if lot_ids:
+        for sale in db.scalars(
+            select(Sale).options(selectinload(Sale.lot))
+            .where(Sale.lot_id.in_(lot_ids)).order_by(Sale.sold_at.desc())
+        ):
+            revenue = sale.quantity * sale.unit_price_eur_cents
+            cost = sale.quantity * sale.landed_unit_eur_cents + sale.fees_eur_cents
+            profit = revenue - cost
+            data["sales"].append({
+                "id": sale.id, "lot_id": sale.lot_id, "card_id": card.id,
+                "quantity": sale.quantity, "unit_price_eur_cents": sale.unit_price_eur_cents,
+                "fees_eur_cents": sale.fees_eur_cents,
+                "landed_unit_eur_cents": sale.landed_unit_eur_cents,
+                "sold_at": sale.sold_at, "name": data["name_zh"] or "(sin nombre)",
+                "name_en": data["name_en"], "set_code": data["set_code"],
+                "collector_number": data["collector_number"], "revenue_eur_cents": revenue,
+                "cost_eur_cents": cost, "profit_eur_cents": profit,
+                "roi_pct": round(profit / cost * 100, 1) if cost else 0.0,
+            })
     return data
 
 

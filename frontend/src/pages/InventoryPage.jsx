@@ -119,7 +119,6 @@ export default function InventoryPage() {
     setError(null)
     try {
       if (kind === 'split') await api.splitLot(lot.id, quantity)
-      else if (kind === 'GRADE') await api.addLotMovement(lot.id, 'GRADE', quantity)
       else if (kind === 'sell')
         await api.sellLot(lot.id, quantity, yuan2fen(modal.price), yuan2fen(modal.fees || '0'))
       setModal(null)
@@ -421,9 +420,6 @@ export default function InventoryPage() {
                     <>
                       <button className="secondary" onClick={() => openAction(lot, 'sell')}>
                         Vender
-                      </button>{' '}
-                      <button className="secondary" onClick={() => openAction(lot, 'GRADE')}>
-                        Grading
                       </button>{' '}
                       <button className="secondary" onClick={() => openAction(lot, 'split')}>
                         Dividir

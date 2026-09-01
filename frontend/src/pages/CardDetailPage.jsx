@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import Condition from '../components/Condition.jsx'
 import LanguageFlag from '../components/LanguageFlag.jsx'
 import Money from '../components/Money.jsx'
+import MarketplaceIcon from '../components/MarketplaceIcon.jsx'
 
 export default function CardDetailPage({ id }) {
   const [card, setCard] = useState(null)
@@ -204,6 +205,45 @@ export default function CardDetailPage({ id }) {
             })}
           {card.purchases.length === 0 && <div className="muted">Sin compras registradas.</div>}
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Anuncios actuales</h3>
+        <table>
+          <thead><tr><th>Marketplace</th><th>Cantidad</th><th>Precio</th><th>Coste</th><th>Estado</th></tr></thead>
+          <tbody>
+            {card.listings.filter((listing) => ['ACTIVE', 'NEEDS_REMOVAL'].includes(listing.status)).map((listing) => (
+              <tr key={listing.id}>
+                <td><MarketplaceIcon marketplace={listing.marketplace} /></td>
+                <td>{listing.quantity}</td>
+                <td>{(listing.unit_price_eur_cents / 100).toFixed(2)} €</td>
+                <td>{listing.purchase_cost_eur_cents == null ? '—' : `${(listing.purchase_cost_eur_cents / 100).toFixed(2)} €`}</td>
+                <td>{listing.status === 'NEEDS_REMOVAL' ? 'Pendiente de retirar' : 'Activo'}</td>
+              </tr>
+            ))}
+            {card.listings.filter((listing) => ['ACTIVE', 'NEEDS_REMOVAL'].includes(listing.status)).length === 0 && (
+              <tr><td colSpan={5} className="muted">Esta carta no tiene anuncios activos.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <h3>Ventas realizadas</h3>
+        <table>
+          <thead><tr><th>Fecha</th><th>Cantidad</th><th>Venta</th><th>Coste</th><th>Beneficio</th><th>ROI</th></tr></thead>
+          <tbody>
+            {card.sales.map((sale) => <tr key={sale.id}>
+              <td>{new Date(sale.sold_at).toLocaleDateString('es-ES')}</td>
+              <td>{sale.quantity}</td>
+              <td>{(sale.revenue_eur_cents / 100).toFixed(2)} €</td>
+              <td>{(sale.cost_eur_cents / 100).toFixed(2)} €</td>
+              <td className={sale.profit_eur_cents >= 0 ? 'ok' : 'err'}>{(sale.profit_eur_cents / 100).toFixed(2)} €</td>
+              <td>{sale.roi_pct}%</td>
+            </tr>)}
+            {card.sales.length === 0 && <tr><td colSpan={6} className="muted">Esta carta todavía no tiene ventas.</td></tr>}
+          </tbody>
+        </table>
       </div>
 
       {manualLots.length > 0 && <div className="card">

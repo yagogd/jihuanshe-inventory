@@ -195,7 +195,8 @@ def test_receiving_shipment_stores_purchase_plus_shipping_unit_cost():
             if row["source"] == "RECEIVE"
             and row["order_item_id"] == order["items"][0]["id"]
         )
-        assert lot["unit_cost_eur_cents"] == 113
+        expected_purchase_cents = round(100 * order["fx_cny_eur"])
+        assert lot["unit_cost_eur_cents"] == expected_purchase_cents + 100
 
 
 def test_create_custom_category():

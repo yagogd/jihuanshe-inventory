@@ -45,3 +45,43 @@ def test_saved_fees_not_overwritten_on_settings_change():
         client.put("/api/settings", json={"alipay_fee_threshold_fen": 20000})
         detail = client.get(f"/api/orders/{body['id']}").json()
         assert detail["alipay_fee_fen"] == 450
+
+
+def test_custom_marketplace_can_be_created_and_listed():
+    with TestClient(app) as client:
+        created = client.post("/api/settings/marketplaces", json={
+            "name": "TCG Player",
+            "icon_path": "manual/tcg.png",
+        })
+        assert created.status_code == 201, created.text
+        assert created.json()["code"] == "TCG_PLAYER"
+        assert created.json()["icon_path"] == "manual/tcg.png"
+
+        marketplaces = client.get("/api/settings/marketplaces").json()
+        assert any(row["code"] == "CARDMARKET" and row["builtin"] for row in marketplaces)
+        assert any(row["code"] == "TCG_PLAYER" and not row["builtin"] for row in marketplaces)
+
+        edited = client.put("/api/settings/marketplaces/TCG_PLAYER", json={
+            "name": "TCGplayer Europe",
+            "icon_path": "manual/tcg-new.png",
+        })
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["code"] == "TCG_PLAYER"
+        assert edited.json()["name"] == "TCGplayer Europe"
+        assert edited.json()["icon_path"] == "manual/tcg-new.png"
+
+
+def test_builtin_marketplace_can_be_edited_and_removed():
+    with TestClient(app) as client:
+        edited = client.put("/api/settings/marketplaces/EBAY", json={
+            "name": "Mi eBay",
+            "icon_path": "manual/my-ebay.png",
+        })
+        assert edited.status_code == 200, edited.text
+        assert edited.json()["code"] == "EBAY"
+        assert edited.json()["name"] == "Mi eBay"
+        assert edited.json()["builtin"] is True
+
+        removed = client.delete("/api/settings/marketplaces/EBAY")
+        assert removed.status_code == 204, removed.text
+        assert all(row["code"] != "EBAY" for row in client.get("/api/settings/marketplaces").json())

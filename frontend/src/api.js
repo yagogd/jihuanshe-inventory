@@ -12,6 +12,7 @@ async function request(path, options) {
     }
     throw new Error(detail)
   }
+  if (response.status === 204) return null
   return response.json()
 }
 
@@ -46,6 +47,20 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  listMarketplaces: () => request('/settings/marketplaces'),
+  createMarketplace: (body) =>
+    request('/settings/marketplaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  updateMarketplace: (code, body) =>
+    request('/settings/marketplaces/' + encodeURIComponent(code), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+  deleteMarketplace: (code) => request('/settings/marketplaces/' + encodeURIComponent(code), { method: 'DELETE' }),
   listShipments: () => request('/shipments'),
   getShipment: (id) => request('/shipments/' + id),
   createShipment: (body) =>
@@ -98,6 +113,12 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  updateListing: (id, body) =>
+    request('/listings/' + id, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
   sellListing: (id, body) =>
     request('/listings/' + id + '/sell', {
       method: 'POST',
@@ -105,7 +126,14 @@ export const api = {
       body: JSON.stringify(body),
     }),
   removeListing: (id) => request('/listings/' + id + '/remove', { method: 'POST' }),
+  deleteListing: (id) => request('/listings/' + id, { method: 'DELETE' }),
   listSales: () => request('/sales'),
+  updateSale: (id, body) => request('/sales/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  listBundles: () => request('/bundles'),
+  createBundle: (body) => request('/bundles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  updateBundleListing: (id, body) => request('/bundle-listings/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  sellBundleListing: (id, body) => request('/bundle-listings/' + id + '/sell', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  deleteBundleListing: (id) => request('/bundle-listings/' + id, { method: 'DELETE' }),
   getOverview: () => request('/overview'),
   listCards: (params) => {
     const qs = new URLSearchParams()

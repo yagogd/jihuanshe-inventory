@@ -62,6 +62,16 @@ class AppSettings(Base):
     display_currency: Mapped[str] = mapped_column(String, default="EUR")
 
 
+class Marketplace(Base):
+    __tablename__ = "marketplaces"
+
+    code: Mapped[str] = mapped_column(String(20), primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True)
+    icon_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class FxRate(Base):
     """Cached EUR exchange rate for a single date, so we never re-fetch it."""
 
@@ -353,6 +363,7 @@ class Listing(Base):
     lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    marketplace: Mapped[str] = mapped_column(String(20), default="OTHER")
     status: Mapped[ListingStatus] = mapped_column(
         SAEnum(ListingStatus, native_enum=False), default=ListingStatus.ACTIVE
     )
@@ -366,6 +377,7 @@ class Sale(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    bundle_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("bundles.id"), index=True, nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     unit_price_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
     fees_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
@@ -374,3 +386,37 @@ class Sale(Base):
     sold_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     lot: Mapped["InventoryLot"] = relationship()
+    bundle: Mapped["Bundle | None"] = relationship()
+
+
+class Bundle(Base):
+    __tablename__ = "bundles"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(120))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    items: Mapped[list["BundleItem"]] = relationship(back_populates="bundle", cascade="all, delete-orphan")
+    listings: Mapped[list["BundleListing"]] = relationship(back_populates="bundle", cascade="all, delete-orphan")
+
+
+class BundleItem(Base):
+    __tablename__ = "bundle_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    bundle_id: Mapped[str] = mapped_column(String(36), ForeignKey("bundles.id"), index=True)
+    lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    bundle: Mapped["Bundle"] = relationship(back_populates="items")
+    lot: Mapped["InventoryLot"] = relationship()
+
+
+class BundleListing(Base):
+    __tablename__ = "bundle_listings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    bundle_id: Mapped[str] = mapped_column(String(36), ForeignKey("bundles.id"), index=True)
+    unit_price_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
+    marketplace: Mapped[str] = mapped_column(String(20), default="OTHER")
+    status: Mapped[ListingStatus] = mapped_column(SAEnum(ListingStatus, native_enum=False), default=ListingStatus.ACTIVE)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    bundle: Mapped["Bundle"] = relationship(back_populates="listings")

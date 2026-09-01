@@ -117,6 +117,21 @@ def test_card_detail_includes_origin_and_landed_cost_breakdown():
             row["id"] for row in client.get("/api/cards", params={"q": "DET"}).json()
             if row["collector_number"] == "1/1"
         )
+        lot = next(
+            row for row in client.get("/api/inventory", params={"q": "Carta ficha completa"}).json()
+            if row["source"] == "RECEIVE"
+        )
+        listing = client.post("/api/listings", json={
+            "lot_id": lot["id"], "quantity": 1,
+            "unit_price_eur_cents": 200, "marketplace": "CARDMARKET",
+        }).json()
+        client.post(f"/api/listings/{listing['id']}/sell", json={
+            "quantity": 1, "unit_price_eur_cents": 200, "fees_eur_cents": 0,
+        })
+        client.post("/api/listings", json={
+            "lot_id": lot["id"], "quantity": 1,
+            "unit_price_eur_cents": 220, "marketplace": "EBAY",
+        })
         detail = client.get(f"/api/cards/{card_id}")
         assert detail.status_code == 200, detail.text
         purchase = detail.json()["purchases"][0]
@@ -128,3 +143,5 @@ def test_card_detail_includes_origin_and_landed_cost_breakdown():
         assert purchase["shipment_alloc_cents"] == {"Internacional": 100}
         assert purchase["landed_eur_cents"] == 134
         assert purchase["unit_landed_eur_cents"] == 67
+        assert detail.json()["listings"][0]["marketplace"] == "EBAY"
+        assert detail.json()["sales"][0]["revenue_eur_cents"] == 200

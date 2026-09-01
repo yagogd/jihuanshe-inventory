@@ -86,6 +86,9 @@ def _migrate() -> None:
             "image_path": "VARCHAR",
         },
     )
+    add_columns("listings", {"marketplace": "VARCHAR DEFAULT 'OTHER'"})
+    add_columns("sales", {"bundle_id": "VARCHAR"})
+    add_columns("marketplaces", {"enabled": "BOOLEAN DEFAULT 1"})
     add_columns(
         "shipments",
         {

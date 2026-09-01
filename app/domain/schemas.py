@@ -108,6 +108,18 @@ class SettingsIn(BaseModel):
     display_currency: str | None = None
 
 
+class MarketplaceIn(BaseModel):
+    name: str
+    icon_path: str | None = None
+
+
+class MarketplaceOut(BaseModel):
+    code: str
+    name: str
+    icon_path: str | None = None
+    builtin: bool = False
+
+
 class OrderStatusIn(BaseModel):
     status: OrderStatus
 
@@ -264,6 +276,13 @@ class ListingIn(BaseModel):
     lot_id: str
     quantity: int
     unit_price_eur_cents: int
+    marketplace: str = "OTHER"
+
+
+class ListingUpdateIn(BaseModel):
+    quantity: int
+    unit_price_eur_cents: int
+    marketplace: str = "OTHER"
 
 
 class SaleIn(BaseModel):
@@ -285,6 +304,9 @@ class ListingOut(BaseModel):
     collector_number: str | None = None
     image_path: str | None = None
     available: int
+    marketplace: str = "OTHER"
+    purchase_cost_eur_cents: int | None = None
+    card_id: str | None = None
 
 
 class SaleOut(BaseModel):
@@ -303,6 +325,56 @@ class SaleOut(BaseModel):
     cost_eur_cents: int
     profit_eur_cents: int
     roi_pct: float
+    card_id: str | None = None
+    image_path: str | None = None
+    bundle_id: str | None = None
+    bundle_name: str | None = None
+    bundle_image_paths: list[str] = []
+
+
+class BundleItemIn(BaseModel):
+    lot_id: str
+    quantity: int = 1
+
+
+class BundleListingIn(BaseModel):
+    marketplace: str = "OTHER"
+    unit_price_eur_cents: int
+
+
+class BundleIn(BaseModel):
+    name: str
+    items: list[BundleItemIn]
+    listings: list[BundleListingIn]
+
+
+class BundleItemOut(BaseModel):
+    lot_id: str
+    quantity: int
+    available: int
+    name: str
+    name_en: str | None = None
+    set_code: str | None = None
+    collector_number: str | None = None
+    image_path: str | None = None
+    unit_cost_eur_cents: int | None = None
+
+
+class BundleListingOut(BaseModel):
+    id: str
+    marketplace: str
+    unit_price_eur_cents: int
+    status: ListingStatus
+
+
+class BundleOut(BaseModel):
+    id: str
+    name: str
+    created_at: datetime
+    total_cost_eur_cents: int
+    max_available: int
+    items: list[BundleItemOut]
+    listings: list[BundleListingOut]
 
 
 class OverviewOut(BaseModel):
@@ -376,6 +448,8 @@ class CardLotOut(BaseModel):
 class CardDetailOut(CardOut):
     purchases: list[CardPurchaseOut]
     lots: list[CardLotOut]
+    listings: list[ListingOut] = []
+    sales: list[SaleOut] = []
 
 
 class CardNameIn(BaseModel):
