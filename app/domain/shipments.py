@@ -51,6 +51,11 @@ def update_shipment(db: Session, shipment: Shipment, payload: ShipmentIn) -> Shi
 
 
 def _apply(db: Session, shipment: Shipment, payload: ShipmentIn) -> None:
+    shipment.display_name = (
+        payload.display_name.strip()
+        if payload.display_name and payload.display_name.strip()
+        else None
+    )
     if payload.status is not None:
         shipment.status = payload.status
 
@@ -121,6 +126,7 @@ def load_shipment(db: Session, shipment_id: str) -> Shipment | None:
 def shipment_to_dict(shipment: Shipment) -> dict:
     return {
         "id": shipment.id,
+        "display_name": shipment.display_name,
         "status": shipment.status,
         "total_paid_eur_cents": shipment.total_paid_eur_cents,
         "fx_cny_eur": shipment.fx_cny_eur,

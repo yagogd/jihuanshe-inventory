@@ -9,17 +9,20 @@ def test_settings_roundtrip():
         assert body["alipay_fee_threshold_fen"] == 20000
         assert body["alipay_fee_rate"] == 0.03
         assert body["fx_cny_eur"] == 0.13
+        assert body["inventory_page_size"] == 20
 
         updated = client.put(
             "/api/settings",
-            json={"fx_cny_eur": 0.14, "alipay_fee_rate": 0.02},
+            json={"fx_cny_eur": 0.14, "alipay_fee_rate": 0.02, "inventory_page_size": 35},
         ).json()
         assert updated["fx_cny_eur"] == 0.14
         assert updated["alipay_fee_rate"] == 0.02
+        assert updated["inventory_page_size"] == 35
 
         again = client.get("/api/settings").json()
         assert again["fx_cny_eur"] == 0.14
         assert again["alipay_fee_rate"] == 0.02
+        assert again["inventory_page_size"] == 35
 
 
 def _order_payload():

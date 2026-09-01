@@ -6,14 +6,23 @@ name is stored as scraped; the English name is filled once (see
 """
 from __future__ import annotations
 
-from collections import defaultdict
 import re
+from collections import defaultdict
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.domain.costs import compute_order_landed
-from app.domain.models import Card, InventoryLot, Listing, Order, OrderItem, Sale, Shipment, ShipmentCost
+from app.domain.models import (
+    Card,
+    InventoryLot,
+    Listing,
+    Order,
+    OrderItem,
+    Sale,
+    Shipment,
+    ShipmentCost,
+)
 
 
 def card_identity(
@@ -267,6 +276,7 @@ def card_detail(db: Session, card: Card) -> dict:
                 "shipment_allocation_method": (
                     shipment.cost_method if shipment else "BY_VALUE"
                 ),
+                "inventory_excluded": item.excluded_from_inventory,
             }
         )
 

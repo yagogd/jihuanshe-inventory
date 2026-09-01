@@ -42,6 +42,7 @@ export default function ShipmentsPage() {
       <table>
         <thead>
           <tr>
+            <th>Nombre</th>
             <th>Estado</th>
             <th>Órdenes</th>
             <th>Costes €</th>
@@ -51,6 +52,11 @@ export default function ShipmentsPage() {
         <tbody>
           {shipments.map((shipment) => (
             <tr key={shipment.id}>
+              <td>
+                <a href={`#/shipments/${shipment.id}`}>
+                  {shipment.display_name || `Envío ${shipment.id.slice(0, 8)}`}
+                </a>
+              </td>
               <td>{shipment.status}</td>
               <td>{shipment.orders.length}</td>
               <td>{fen2yuan(shipment.total_paid_eur_cents)}</td>
@@ -61,7 +67,7 @@ export default function ShipmentsPage() {
           ))}
           {shipments.length === 0 && (
             <tr>
-              <td colSpan={4} className="muted">
+              <td colSpan={5} className="muted">
                 Sin envíos todavía.
               </td>
             </tr>

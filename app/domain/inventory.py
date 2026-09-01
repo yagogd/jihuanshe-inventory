@@ -42,6 +42,8 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
 
     for order in shipment.orders:
         for item in order.items:
+            if item.excluded_from_inventory:
+                continue
             existing = db.scalar(
                 select(InventoryLot).where(InventoryLot.order_item_id == item.id)
             )
@@ -299,6 +301,8 @@ def list_inventory_entries(db: Session) -> list[dict]:
         )
     )
     for item in items:
+        if item.excluded_from_inventory:
+            continue
         if item.id in received_item_ids:
             continue
         entries.append(pending_item_to_dict(item))

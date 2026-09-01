@@ -14,7 +14,7 @@ from app.domain.inventory import (
     lot_to_dict,
     split_lot,
 )
-from app.domain.models import InventoryLot, OrderItem
+from app.domain.models import BundleItem, InventoryLot, OrderItem, Sale
 from app.domain.sales import sale_to_dict, sell_lot
 from app.domain.schemas import (
     InventoryLotDetailOut,
@@ -112,6 +112,34 @@ def get_lot(lot_id: str, db: Session = Depends(get_db)) -> dict:
     data = lot_to_dict(lot)
     data["movements"] = list(lot.movements)
     return data
+
+
+@router.delete("/{entry_id}", status_code=204)
+def delete_inventory_entry(entry_id: str, db: Session = Depends(get_db)) -> None:
+    """Remove a lot, or hide a pending order item, while preserving purchase history."""
+    lot = db.get(InventoryLot, entry_id)
+    if lot is not None:
+        if db.scalar(select(Sale.id).where(Sale.lot_id == lot.id).limit(1)):
+            raise HTTPException(
+                status_code=409,
+                detail="No se puede borrar esta carta porque tiene ventas registradas",
+            )
+        if db.scalar(select(BundleItem.id).where(BundleItem.lot_id == lot.id).limit(1)):
+            raise HTTPException(
+                status_code=409,
+                detail="No se puede borrar esta carta porque forma parte de un lote",
+            )
+        if lot.order_item is not None:
+            lot.order_item.excluded_from_inventory = True
+        db.delete(lot)
+        db.commit()
+        return
+
+    item = db.get(OrderItem, entry_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Carta de inventario no encontrada")
+    item.excluded_from_inventory = True
+    db.commit()
 
 
 @router.post("/{lot_id}/split", response_model=InventoryLotOut, status_code=201)

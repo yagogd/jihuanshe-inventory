@@ -19,6 +19,7 @@ async function request(path, options) {
 export const api = {
   status: () => request('/import/status'),
   previewAuto: () => request('/import/preview?auto=true', { method: 'POST' }),
+  importAllOrders: () => request('/import/bulk', { method: 'POST' }),
   listOrders: (status) => request('/orders' + (status ? '?status=' + encodeURIComponent(status) : '')),
   getOrder: (id) => request('/orders/' + id),
   getOrderLanded: (id) => request('/orders/' + id + '/landed'),
@@ -34,6 +35,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  deleteOrder: (id) => request('/orders/' + id, { method: 'DELETE' }),
   createOrder: (body) =>
     request('/orders', {
       method: 'POST',
@@ -75,6 +77,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }),
+  deleteShipment: (id) => request('/shipments/' + id, { method: 'DELETE' }),
   receiveShipment: (id) => request('/shipments/' + id + '/receive', { method: 'POST' }),
   listInventory: (params) => {
     const qs = new URLSearchParams()
@@ -106,6 +109,7 @@ export const api = {
         fees_eur_cents: feesCents || 0,
       }),
     }),
+  deleteInventoryEntry: (id) => request('/inventory/' + id, { method: 'DELETE' }),
   listListings: () => request('/listings'),
   createListing: (body) =>
     request('/listings', {
@@ -129,6 +133,7 @@ export const api = {
   deleteListing: (id) => request('/listings/' + id, { method: 'DELETE' }),
   listSales: () => request('/sales'),
   updateSale: (id, body) => request('/sales/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
+  deleteSale: (id) => request('/sales/' + id, { method: 'DELETE' }),
   listBundles: () => request('/bundles'),
   createBundle: (body) => request('/bundles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
   updateBundleListing: (id, body) => request('/bundle-listings/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),

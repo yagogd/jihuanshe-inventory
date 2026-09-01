@@ -116,6 +116,23 @@ def test_sell_over_available_rejected():
         assert response.status_code == 422
 
 
+def test_sale_can_be_deleted_and_stock_is_restored():
+    with TestClient(app) as client:
+        order_id = _order(client, "VentaParaEliminar", 2)
+        _receive(client, order_id)
+        lot = _lot(client, "VentaParaEliminar")
+        sale = client.post(
+            f"/api/inventory/{lot['id']}/sell",
+            json={"quantity": 1, "unit_price_eur_cents": 500},
+        ).json()
+        assert _lot(client, "VentaParaEliminar")["available"] == 1
+
+        deleted = client.delete(f"/api/sales/{sale['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert _lot(client, "VentaParaEliminar")["available"] == 2
+        assert all(row["id"] != sale["id"] for row in client.get("/api/sales").json())
+
+
 def test_sale_marks_other_marketplaces_for_removal_when_stock_runs_out():
     with TestClient(app) as client:
         order_id = _order(client, "VentaMultiMarket", 1)

@@ -98,6 +98,7 @@ class SettingsOut(BaseModel):
     fx_cny_eur: float
     fx_mode: str
     display_currency: str
+    inventory_page_size: int
 
 
 class SettingsIn(BaseModel):
@@ -106,6 +107,7 @@ class SettingsIn(BaseModel):
     fx_cny_eur: float | None = None
     fx_mode: str | None = None
     display_currency: str | None = None
+    inventory_page_size: int | None = None
 
 
 class MarketplaceIn(BaseModel):
@@ -143,6 +145,7 @@ class ShipmentCostOut(ShipmentCostIn):
 
 
 class ShipmentIn(BaseModel):
+    display_name: str | None = None
     status: ShipmentStatus | None = None
     order_ids: list[str] = []
     total_paid_eur_cents: int = 0
@@ -156,6 +159,7 @@ class ShipmentOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    display_name: str | None = None
     status: ShipmentStatus
     total_paid_eur_cents: int
     fx_cny_eur: float
@@ -433,6 +437,7 @@ class CardPurchaseOut(BaseModel):
     unit_landed_eur_cents: int = 0
     allocation_method: AllocationMethod = AllocationMethod.BY_VALUE
     shipment_allocation_method: AllocationMethod = AllocationMethod.BY_VALUE
+    inventory_excluded: bool = False
 
 
 class CardLotOut(BaseModel):
@@ -485,3 +490,20 @@ class ImportPreviewOut(BaseModel):
     raw_dumps: list[str] = []
     warnings: list[str] = []
     error: str | None = None
+
+
+class BulkImportItemOut(BaseModel):
+    jihuanshe_order_id: str
+    status: str
+    seller: str | None = None
+    order_id: str | None = None
+    error: str | None = None
+
+
+class BulkImportOut(BaseModel):
+    imported: int = 0
+    already_registered: int = 0
+    cancelled: int = 0
+    failed: int = 0
+    reached_end: bool = False
+    items: list[BulkImportItemOut] = []

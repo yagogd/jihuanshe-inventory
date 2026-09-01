@@ -26,6 +26,7 @@ def get_app_settings(db: Session) -> AppSettings:
             fx_cny_eur=config.fx_cny_eur,
             fx_mode="historical",
             display_currency="EUR",
+            inventory_page_size=20,
         )
         db.add(row)
         db.commit()
@@ -45,6 +46,8 @@ def update_app_settings(db: Session, payload: SettingsIn) -> AppSettings:
         row.fx_mode = payload.fx_mode
     if payload.display_currency is not None:
         row.display_currency = payload.display_currency
+    if payload.inventory_page_size is not None:
+        row.inventory_page_size = max(1, min(200, payload.inventory_page_size))
     db.commit()
     db.refresh(row)
     return row

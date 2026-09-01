@@ -75,11 +75,14 @@ def test_relocate_images(tmp_path):
 
     a = Item()
     a.image_path = "preview/sess/0-x.jpg"
+    a.card = Item()
+    a.card.image_path = a.image_path
     b = Item()
     b.image_path = "missing.jpg"
 
     relocate_images(images, "order1", [a, b])
 
     assert a.image_path == "order1/000.jpg"
+    assert a.card.image_path == "order1/000.jpg"
     assert (images / "order1" / "000.jpg").exists()
     assert b.image_path is None

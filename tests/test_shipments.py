@@ -26,6 +26,7 @@ def test_shipment_create_and_assign():
         created = client.post(
             "/api/shipments",
             json={
+                "display_name": "Lote de agosto",
                 "order_ids": [o1["id"], o2["id"]],
                 "total_paid_eur_cents": 1500,
                 "costs": [{"category_id": international, "amount": 1500, "currency": "EUR"}],
@@ -34,6 +35,7 @@ def test_shipment_create_and_assign():
         assert created.status_code == 201, created.text
         body = created.json()
         assert body["status"] == "PREPARING"
+        assert body["display_name"] == "Lote de agosto"
         assert body["total_paid_eur_cents"] == 1500
         assert len(body["orders"]) == 2
         assert body["costs"][0]["amount_eur_cents"] == 1500
@@ -42,6 +44,7 @@ def test_shipment_create_and_assign():
         updated = client.put(
             f"/api/shipments/{body['id']}",
             json={
+                "display_name": "Lote principal",
                 "status": "SHIPPED",
                 "cost_method": "BY_QUANTITY",
                 "order_ids": [o1["id"]],
@@ -55,6 +58,7 @@ def test_shipment_create_and_assign():
         assert updated.status_code == 200, updated.text
         u = updated.json()
         assert u["status"] == "SHIPPED"
+        assert u["display_name"] == "Lote principal"
         assert len(u["orders"]) == 1
         assert u["orders"][0]["id"] == o1["id"]
         assert len(u["costs"]) == 2
@@ -68,6 +72,20 @@ def test_shipment_create_and_assign():
         assert detail["total_paid_eur_cents"] == 2500
         assert detail["cost_method"] == "BY_QUANTITY"
         assert all(cost["method"] == "BY_QUANTITY" for cost in detail["costs"])
+
+
+def test_delete_shipment_preserves_and_unlinks_orders():
+    with TestClient(app) as client:
+        order = _order(client)
+        shipment = client.post(
+            "/api/shipments",
+            json={"display_name": "Temporal", "order_ids": [order["id"]], "costs": []},
+        ).json()
+
+        deleted = client.delete(f"/api/shipments/{shipment['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert client.get(f"/api/shipments/{shipment['id']}").status_code == 404
+        assert client.get(f"/api/orders/{order['id']}").status_code == 200
 
 
 def test_shipment_rejects_mismatched_breakdown():

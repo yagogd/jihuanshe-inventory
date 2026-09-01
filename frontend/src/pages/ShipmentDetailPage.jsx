@@ -94,6 +94,7 @@ export default function ShipmentDetailPage({ id }) {
     setError(null)
     try {
       const payload = {
+        display_name: shipment.display_name || null,
         status: shipment.status,
         order_ids: [...selected],
         total_paid_eur_cents: totalCents,
@@ -144,11 +145,25 @@ export default function ShipmentDetailPage({ id }) {
     }
   }
 
+  async function deleteShipment() {
+    const label = shipment.display_name || `envío ${shipment.id.slice(0, 8)}`
+    if (!window.confirm(`¿Borrar ${label}? Las órdenes y el inventario se conservarán, pero se eliminará el envío y su desglose de costes.`)) return
+    setSaving(true)
+    setError(null)
+    try {
+      await api.deleteShipment(id)
+      window.location.hash = '#/shipments'
+    } catch (e) {
+      setError(e.message)
+      setSaving(false)
+    }
+  }
+
   if (!shipment || !lines.length) return error ? <div className="err">{error}</div> : <div className="muted">Cargando…</div>
 
   return (
     <div>
-      <h1>Envío {shipment.id.slice(0, 8)}</h1>
+      <h1>{shipment.display_name || `Envío ${shipment.id.slice(0, 8)}`}</h1>
       <div className="card">
         {error && <div className="err">{error}</div>}
         {saved && <div className="ok">Cambios guardados ✓</div>}
@@ -159,6 +174,14 @@ export default function ShipmentDetailPage({ id }) {
           </div>
         )}
         <div className="row" style={{ marginTop: 12 }}>
+          <div className="field">
+            <label>Nombre del envío</label>
+            <input
+              value={shipment.display_name || ''}
+              onChange={(e) => setShipment({ ...shipment, display_name: e.target.value })}
+              placeholder="p. ej. Pokémon agosto"
+            />
+          </div>
           <div className="field">
             <label>Estado</label>
             <select
@@ -334,6 +357,7 @@ export default function ShipmentDetailPage({ id }) {
           <thead>
             <tr>
               <th></th>
+              <th>Orden</th>
               <th>Fecha</th>
               <th>Vendedor</th>
               <th>Total ¥</th>
@@ -350,6 +374,11 @@ export default function ShipmentDetailPage({ id }) {
                     onChange={() => toggleOrder(order.id)}
                   />
                 </td>
+                <td>
+                  <a href={`#/orders/${order.id}`} title="Ver las cartas de esta orden">
+                    {order.display_name || order.jihuanshe_order_id || 'Ver detalle'}
+                  </a>
+                </td>
                 <td>{order.purchase_date || '—'}</td>
                 <td>{order.seller || '—'}</td>
                 <td>{fen2yuan(order.total_paid_fen)}</td>
@@ -358,7 +387,7 @@ export default function ShipmentDetailPage({ id }) {
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
+                <td colSpan={6} className="muted">
                   No hay órdenes.
                 </td>
               </tr>
@@ -370,6 +399,9 @@ export default function ShipmentDetailPage({ id }) {
       <div className="row" style={{ marginTop: 16 }}>
         <button onClick={save} disabled={saving || !matches}>
           {saving ? 'Guardando…' : 'Guardar envío'}
+        </button>
+        <button className="danger-button" onClick={deleteShipment} disabled={saving}>
+          Borrar envío
         </button>
       </div>
     </div>

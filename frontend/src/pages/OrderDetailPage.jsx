@@ -105,6 +105,17 @@ export default function OrderDetailPage({ id }) {
     } catch (e) { setError(e.message) }
   }
 
+  async function deleteOrder() {
+    if (!window.confirm('¿Borrar esta orden? También se quitarán del inventario sus cartas y anuncios. Esta acción no se puede deshacer.')) return
+    setSaving(true); setError(null)
+    try {
+      await api.deleteOrder(id)
+      window.location.hash = '#/orders'
+    } catch (e) {
+      setError(e.message); setSaving(false)
+    }
+  }
+
   if (!order || !form) return error ? <div className="err">{error}</div> : <div className="muted">Cargando…</div>
 
   const nameEnById = Object.fromEntries(
@@ -119,8 +130,9 @@ export default function OrderDetailPage({ id }) {
       {error && <div className="err">{error}</div>}{saved && <div className="ok">Cambios guardados ✓</div>}
       {order.has_sales && (
         <div className="warn" style={{ marginTop: 8 }}>
-          Esta orden tiene ventas registradas. Los cambios aquí no alteran el beneficio ya
-          calculado de ventas pasadas.
+          Esta orden tiene ventas registradas y por esa razón no se puede borrar. Primero
+          elimina esas ventas desde <a href="#/sales">Ventas</a>. Los cambios en la orden no
+          alteran el beneficio ya calculado de ventas pasadas.
         </div>
       )}
       <div className="row" style={{ marginTop: 12 }}>
@@ -200,7 +212,17 @@ export default function OrderDetailPage({ id }) {
     <div className="row" style={{ marginTop: 12 }}>
       <button className="secondary" onClick={addItem}>Añadir ítem</button>
     </div>
-    <div className="row" style={{ marginTop: 16 }}><button onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button></div>
+    <div className="row" style={{ marginTop: 16 }}>
+      <button onClick={save} disabled={saving}>{saving ? 'Guardando…' : 'Guardar cambios'}</button>
+      <button
+        className="secondary danger-button"
+        onClick={deleteOrder}
+        disabled={saving || order.has_sales}
+        title={order.has_sales ? 'No se puede borrar porque tiene ventas registradas' : ''}
+      >
+        {order.has_sales ? 'No se puede borrar: tiene ventas' : 'Borrar orden'}
+      </button>
+    </div>
 
     {landed && (
       <div className="card" style={{ marginTop: 16 }}>

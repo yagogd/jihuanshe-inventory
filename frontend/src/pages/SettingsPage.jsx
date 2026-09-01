@@ -14,15 +14,15 @@ export default function SettingsPage() {
 
   function loadMarketplaces() { api.listMarketplaces().then(setMarketplaces).catch((e) => setError(e.message)) }
   useEffect(() => {
-    api.getSettings().then((data) => setForm({ threshold: fen2yuan(data.alipay_fee_threshold_fen), rate: String(data.alipay_fee_rate * 100), fx: String(data.fx_cny_eur), fx_mode: data.fx_mode || 'historical', display_currency: data.display_currency || 'EUR' })).catch((e) => setError(e.message))
+    api.getSettings().then((data) => setForm({ threshold: fen2yuan(data.alipay_fee_threshold_fen), rate: String(data.alipay_fee_rate * 100), fx: String(data.fx_cny_eur), fx_mode: data.fx_mode || 'historical', display_currency: data.display_currency || 'EUR', inventory_page_size: String(data.inventory_page_size || 20) })).catch((e) => setError(e.message))
     loadMarketplaces()
   }, [])
 
   async function save() {
     setSaving(true); setSaved(false); setError(null)
     try {
-      const data = await api.updateSettings({ alipay_fee_threshold_fen: yuan2fen(form.threshold), alipay_fee_rate: (parseFloat(form.rate) || 0) / 100, fx_cny_eur: parseFloat(form.fx) || 0, fx_mode: form.fx_mode, display_currency: form.display_currency })
-      setForm({ threshold: fen2yuan(data.alipay_fee_threshold_fen), rate: String(data.alipay_fee_rate * 100), fx: String(data.fx_cny_eur), fx_mode: data.fx_mode, display_currency: data.display_currency }); setSaved(true)
+      const data = await api.updateSettings({ alipay_fee_threshold_fen: yuan2fen(form.threshold), alipay_fee_rate: (parseFloat(form.rate) || 0) / 100, fx_cny_eur: parseFloat(form.fx) || 0, fx_mode: form.fx_mode, display_currency: form.display_currency, inventory_page_size: parseInt(form.inventory_page_size, 10) || 20 })
+      setForm({ threshold: fen2yuan(data.alipay_fee_threshold_fen), rate: String(data.alipay_fee_rate * 100), fx: String(data.fx_cny_eur), fx_mode: data.fx_mode, display_currency: data.display_currency, inventory_page_size: String(data.inventory_page_size) }); setSaved(true)
     } catch (e) { setError(e.message) } finally { setSaving(false) }
   }
 
@@ -76,6 +76,14 @@ export default function SettingsPage() {
 
     <SettingsSection icon="%" title="Comisiones de compra" description="Reglas utilizadas para calcular automáticamente los gastos de Alipay.">
       <div className="settings-grid"><Field label="Umbral de comisión Alipay (¥)" help="La comisión se aplica cuando la compra supera este importe."><input value={form.threshold} onChange={(e) => setForm({ ...form, threshold: e.target.value })} /></Field><Field label="Tasa Alipay (%)" help="Porcentaje añadido al coste de la compra."><input value={form.rate} onChange={(e) => setForm({ ...form, rate: e.target.value })} /></Field></div>
+    </SettingsSection>
+
+    <SettingsSection icon="20" title="Inventario" description="Configura cuántas cartas aparecen en cada página del inventario.">
+      <div className="settings-grid">
+        <Field label="Cartas por página" help="Puedes elegir entre 1 y 200 cartas.">
+          <input type="number" min="1" max="200" value={form.inventory_page_size} onChange={(e) => setForm({ ...form, inventory_page_size: e.target.value })} />
+        </Field>
+      </div>
     </SettingsSection>
 
     <SettingsSection icon="M" title="Marketplaces" description="Gestiona los canales disponibles al publicar y editar anuncios.">

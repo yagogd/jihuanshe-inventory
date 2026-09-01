@@ -65,6 +65,16 @@ def get_shipment(shipment_id: str, db: Session = Depends(get_db)) -> dict:
     return shipment_to_dict(_load(shipment_id, db))
 
 
+@router.delete("/{shipment_id}", status_code=204)
+def delete_shipment(shipment_id: str, db: Session = Depends(get_db)) -> None:
+    shipment = _load(shipment_id, db)
+    # Purchases and generated inventory remain part of the history.
+    for order in list(shipment.orders):
+        order.shipment = None
+    db.delete(shipment)
+    db.commit()
+
+
 @router.put("/{shipment_id}", response_model=ShipmentOut)
 def update_shipment_endpoint(
     shipment_id: str, payload: ShipmentIn, db: Session = Depends(get_db)

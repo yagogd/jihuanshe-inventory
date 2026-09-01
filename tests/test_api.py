@@ -127,3 +127,14 @@ def test_import_preview_and_create_order():
             assert updated.json()["items"][0]["quantity"] == 3
     finally:
         app.dependency_overrides.clear()
+
+
+def test_delete_order():
+    with TestClient(app) as client:
+        created = client.post(
+            "/api/orders",
+            json={"seller": "Delete me", "items": [{"raw_name": "Card", "quantity": 1}]},
+        ).json()
+        deleted = client.delete(f"/api/orders/{created['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert client.get(f"/api/orders/{created['id']}").status_code == 404

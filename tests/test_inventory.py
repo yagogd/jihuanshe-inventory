@@ -229,3 +229,31 @@ def test_scanned_cards_appear_as_pending():
         assert lots[0]["available"] == 3
 
 
+def test_delete_pending_inventory_entry_preserves_order_but_hides_card():
+    with TestClient(app) as client:
+        order_id = _create_order(client, "CartaParaQuitar", 1)
+        entry = client.get("/api/inventory", params={"q": "CartaParaQuitar"}).json()[0]
+
+        deleted = client.delete(f"/api/inventory/{entry['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert client.get("/api/inventory", params={"q": "CartaParaQuitar"}).json() == []
+        assert client.get(f"/api/orders/{order_id}").status_code == 200
+
+
+def test_delete_manual_inventory_lot():
+    with TestClient(app) as client:
+        lot = client.post(
+            "/api/inventory",
+            json={
+                "set_code": "DEL",
+                "collector_number": "001",
+                "name_en": "Delete Manual Lot",
+                "quantity": 1,
+                "amount": 100,
+                "currency": "EUR",
+            },
+        ).json()
+        deleted = client.delete(f"/api/inventory/{lot['id']}")
+        assert deleted.status_code == 204, deleted.text
+        assert client.get("/api/inventory", params={"q": "Delete Manual Lot"}).json() == []
+

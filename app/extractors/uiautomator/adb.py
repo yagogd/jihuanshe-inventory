@@ -1,7 +1,7 @@
 """Thin wrapper around the ADB binary.
 
-Deliberately conservative: only the four operations we actually need (list
-devices, dump the UI hierarchy, screenshot, swipe). No automated navigation.
+Deliberately conservative: navigation is limited to taps, back and vertical
+swipes needed by the explicit bulk-import workflow.
 """
 from __future__ import annotations
 
@@ -69,6 +69,15 @@ class AdbClient:
 
     def swipe_down(self) -> None:
         self._swipe(0.31, 0.54, duration=200)
+
+    def swipe_order_list_up(self) -> None:
+        self._swipe(0.78, 0.43, duration=300)
+
+    def tap(self, x: int, y: int) -> None:
+        self._run("shell", "input", "tap", str(x), str(y))
+
+    def back(self) -> None:
+        self._run("shell", "input", "keyevent", "KEYCODE_BACK")
 
     def _swipe(self, y_from_frac: float, y_to_frac: float, duration: int = 400) -> None:
         """Swipe vertically in the center column, avoiding clickable buttons.

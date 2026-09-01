@@ -11,15 +11,27 @@ export default function CardDetailPage({ id }) {
   const [nameEn, setNameEn] = useState('')
   const [saved, setSaved] = useState(false)
 
+  function loadCard() {
+    return api.getCard(id).then((data) => {
+      setCard(data)
+      setNameEn(data.name_en || '')
+    })
+  }
+
   useEffect(() => {
-    api
-      .getCard(id)
-      .then((data) => {
-        setCard(data)
-        setNameEn(data.name_en || '')
-      })
-      .catch((e) => setError(e.message))
+    loadCard().catch((e) => setError(e.message))
   }, [id])
+
+  async function deleteInventoryEntry(entryId) {
+    if (!window.confirm('¿Borrar esta carta del inventario? Esta acción no se puede deshacer.')) return
+    setError(null)
+    try {
+      await api.deleteInventoryEntry(entryId)
+      await loadCard()
+    } catch (e) {
+      setError(e.message)
+    }
+  }
 
   async function saveName() {
     setError(null)
@@ -165,6 +177,12 @@ export default function CardDetailPage({ id }) {
                   <div className="purchase-origin-status">
                     <Condition value={purchase.condition} />
                     <span>{lot ? lot.available : 0} disponibles de {lot ? lot.quantity : purchase.quantity}</span>
+                    {!purchase.inventory_excluded && (
+                      <button className="secondary danger-button" onClick={() => deleteInventoryEntry(lot ? lot.id : purchase.id)}>
+                        Borrar del inventario
+                      </button>
+                    )}
+                    {purchase.inventory_excluded && <span className="muted">Excluida del inventario</span>}
                   </div>
                 </div>
                 <div className="cost-equation">
@@ -255,6 +273,7 @@ export default function CardDetailPage({ id }) {
               <th>Disponible</th>
               <th>Total</th>
               <th>Cond.</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -265,6 +284,7 @@ export default function CardDetailPage({ id }) {
                 </td>
                 <td className="muted">{lot.quantity}</td>
                 <td><Condition value={lot.condition} /></td>
+                <td><button className="secondary danger-button" onClick={() => deleteInventoryEntry(lot.id)}>Borrar</button></td>
               </tr>
             ))}
           </tbody>

@@ -17,10 +17,14 @@ def relocate_images(images_dir: Path, order_id: str, items: list) -> None:
     for index, item in enumerate(items):
         if not item.image_path:
             continue
+        original_path = item.image_path
         source = images_dir / item.image_path
         if source.exists():
             destination = target / f"{index:03d}.jpg"
             shutil.move(str(source), str(destination))
             item.image_path = f"{order_id}/{destination.name}"
+            card = getattr(item, "card", None)
+            if card is not None and card.image_path == original_path:
+                card.image_path = item.image_path
         else:
             item.image_path = None

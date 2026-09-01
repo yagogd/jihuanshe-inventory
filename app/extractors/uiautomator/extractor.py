@@ -7,6 +7,7 @@ from app.config import Settings
 from app.extractors.contract import CapturePreview, CaptureStatus
 from app.extractors.session import CaptureSession, start_session
 from app.extractors.uiautomator.merge import item_fingerprint
+from app.extractors.uiautomator.order_list import parse_order_list
 from app.extractors.uiautomator.parse import parse_window_xml
 
 
@@ -98,6 +99,34 @@ class UIAutomatorExtractor:
 
         return session.to_preview()
 
+    def visible_listed_orders(self):
+        xml = self.adb.current_window_xml()
+        return parse_order_list(xml or "")
+
+    def open_listed_order(self, listed_order) -> bool:
+        left, top, right, bottom = listed_order.bounds
+        # The card body handles the click; the centre column avoids avatar and
+        # action buttons nested at the sides.
+        self.adb.tap((left + right) // 2, (top + bottom) // 2)
+        for _ in range(15):
+            time.sleep(0.2)
+            status = self.status()
+            if status.detected:
+                return True
+        return False
+
+    def return_to_order_list(self) -> bool:
+        self.adb.back()
+        for _ in range(15):
+            time.sleep(0.2)
+            if self.visible_listed_orders():
+                return True
+        return False
+
+    def scroll_order_list(self) -> None:
+        self.adb.swipe_order_list_up()
+        time.sleep(0.7)
+
     def _scroll_to_header(self, session: CaptureSession) -> None:
         """Scroll up to the order header to capture seller, order id and date."""
         prev_xml: str | None = None
@@ -133,7 +162,14 @@ class UIAutomatorExtractor:
             if not xml:
                 break
             session.ingest(xml, shot)
-            if session.footer["reached"] and session.footer["total_paid_fen"] is not None:
+            images_ready = (
+                not self.settings.capture_images or session.snapshot()["images_complete"]
+            )
+            if (
+                session.footer["reached"]
+                and session.footer["total_paid_fen"] is not None
+                and images_ready
+            ):
                 break
             if xml == prev_xml:
                 stuck += 1

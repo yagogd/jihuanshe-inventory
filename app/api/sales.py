@@ -7,20 +7,38 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.domain.inventory import InventoryError
-from app.domain.models import Bundle, BundleItem, BundleListing, InventoryLot, Listing, OrderItem, Sale
+from app.domain.models import (
+    Bundle,
+    BundleItem,
+    BundleListing,
+    InventoryLot,
+    Listing,
+    OrderItem,
+    Sale,
+)
 from app.domain.sales import (
-    create_listing,
-    create_bundle,
     bundle_to_dict,
+    create_bundle,
+    create_listing,
+    delete_sale,
     listing_to_dict,
     remove_listing,
     sale_to_dict,
-    sell_listing,
     sell_bundle_listing,
+    sell_listing,
     update_listing,
     update_sale,
 )
-from app.domain.schemas import BundleIn, BundleOut, BundleListingIn, ListingIn, ListingOut, ListingUpdateIn, SaleIn, SaleOut
+from app.domain.schemas import (
+    BundleIn,
+    BundleListingIn,
+    BundleOut,
+    ListingIn,
+    ListingOut,
+    ListingUpdateIn,
+    SaleIn,
+    SaleOut,
+)
 
 listings_router = APIRouter(prefix="/listings", tags=["listings"])
 sales_router = APIRouter(prefix="/sales", tags=["sales"])
@@ -137,6 +155,14 @@ def update_sale_endpoint(sale_id: str, payload: SaleIn, db: Session = Depends(ge
     except InventoryError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return sale_to_dict(sale)
+
+
+@sales_router.delete("/{sale_id}", status_code=204)
+def delete_sale_endpoint(sale_id: str, db: Session = Depends(get_db)) -> None:
+    sale = db.scalar(select(Sale).options(*_SALE_LOAD).where(Sale.id == sale_id))
+    if sale is None:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    delete_sale(db, sale)
 
 
 _BUNDLE_LOAD = (

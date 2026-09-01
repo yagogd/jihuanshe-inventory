@@ -9,7 +9,17 @@ from sqlalchemy.orm import Session, selectinload
 from app.domain.costs import compute_order_landed
 from app.domain.enums import ListingStatus, MovementKind
 from app.domain.inventory import InventoryError, current_lot_unit_cost, lot_to_dict
-from app.domain.models import Bundle, BundleItem, BundleListing, InventoryLot, Listing, LotMovement, Order, Sale, Shipment
+from app.domain.models import (
+    Bundle,
+    BundleItem,
+    BundleListing,
+    InventoryLot,
+    Listing,
+    LotMovement,
+    Order,
+    Sale,
+    Shipment,
+)
 
 
 def _snapshot(db: Session, lot: InventoryLot) -> tuple[int, str]:
@@ -177,6 +187,20 @@ def update_sale(
         _flag_unavailable_bundles(db, sale.lot_id)
     db.commit()
     return sale
+
+
+def delete_sale(db: Session, sale: Sale) -> None:
+    """Delete a sale transaction and restore its stock with an audit movement."""
+    sales = [sale]
+    if sale.bundle_id:
+        sales = list(db.scalars(select(Sale).where(Sale.bundle_id == sale.bundle_id)))
+    for row in sales:
+        row.lot.available += row.quantity
+        row.lot.movements.append(
+            LotMovement(kind=MovementKind.SALE_ADJUSTMENT, delta=row.quantity)
+        )
+        db.delete(row)
+    db.commit()
 
 
 def _flag_unavailable_bundles(db: Session, lot_id: str) -> None:

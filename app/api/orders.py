@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.db import get_db
 from app.domain.costs import compute_order_landed
 from app.domain.enums import OrderStatus
-from app.domain.models import Order, OrderItem, Shipment
+from app.domain.models import Bundle, BundleItem, InventoryLot, Order, OrderItem, Sale, Shipment
 from app.domain.orders import OrderEditError, persist_order
 from app.domain.orders import update_order as update_order_data
 from app.domain.schemas import LandedOut, OrderIn, OrderOut, OrderStatusIn
@@ -50,6 +50,39 @@ def get_order(order_id: str, db: Session = Depends(get_db)) -> Order:
     if order is None:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     return order
+
+
+@router.delete("/{order_id}", status_code=204)
+def delete_order(order_id: str, db: Session = Depends(get_db)) -> None:
+    order = db.scalar(select(Order).options(_ORDER_LOAD).where(Order.id == order_id))
+    if order is None:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+    lot_ids = list(
+        db.scalars(
+            select(InventoryLot.id)
+            .join(OrderItem, InventoryLot.order_item_id == OrderItem.id)
+            .where(OrderItem.order_id == order_id)
+        )
+    )
+    if lot_ids and db.scalar(select(Sale.id).where(Sale.lot_id.in_(lot_ids)).limit(1)):
+        raise HTTPException(
+            status_code=409,
+            detail="No se puede borrar la orden porque contiene cartas con ventas registradas",
+        )
+    if lot_ids:
+        bundle_ids = list(
+            db.scalars(
+                select(BundleItem.bundle_id)
+                .where(BundleItem.lot_id.in_(lot_ids))
+                .distinct()
+            )
+        )
+        for bundle in db.scalars(select(Bundle).where(Bundle.id.in_(bundle_ids))):
+            db.delete(bundle)
+
+    db.delete(order)
+    db.commit()
 
 
 @router.get("/{order_id}/landed", response_model=LandedOut)

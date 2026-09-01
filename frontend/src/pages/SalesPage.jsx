@@ -233,6 +233,15 @@ export default function SalesPage() {
     } catch (e) { setError(e.message) }
   }
 
+  async function deleteSale(sale) {
+    const message = sale.bundle_id
+      ? '¿Eliminar esta venta del bundle? Se eliminará la transacción completa y se devolverán todas sus cartas al inventario.'
+      : '¿Eliminar esta venta? Las unidades vendidas volverán al inventario.'
+    if (!window.confirm(message)) return
+    setError(null)
+    try { await api.deleteSale(sale.id); load() } catch (e) { setError(e.message) }
+  }
+
   return <div>
     <h1>Ventas</h1>
     {error && <div className="err">{error}</div>}
@@ -316,7 +325,7 @@ export default function SalesPage() {
     </div>
 
     <div className="card"><h3>Ventas realizadas</h3><table><thead><tr><th></th><th>Carta</th><th>Cant.</th><th>Venta</th><th>Coste</th><th>Beneficio</th><th>ROI</th><th></th></tr></thead>
-      <tbody>{(sales || []).map((sale) => <tr key={sale.id}><td>{sale.bundle_image_paths?.length ? <div className="sale-bundle-thumbs">{sale.bundle_image_paths.slice(0, 4).map((path, index) => <img key={`${path}-${index}`} src={`/images/${path}`} alt="" />)}</div> : sale.image_path && <img className="thumb" src={`/images/${sale.image_path}`} alt="" />}</td><td>{sale.bundle_name && <div><span className="offer-type-badge">Bundle</span> <strong>{sale.bundle_name}</strong></div>}{sale.card_id ? <a href={`#/cards/${sale.card_id}`}>{sale.name_en || sale.name}</a> : (sale.name_en || sale.name)}<div className="muted">{sale.set_code}·{sale.collector_number}</div></td><td>{sale.quantity}</td><td>{fen2yuan(sale.revenue_eur_cents)} €</td><td>{fen2yuan(sale.cost_eur_cents)} €</td><td className={sale.profit_eur_cents >= 0 ? 'ok' : 'err'}>{fen2yuan(sale.profit_eur_cents)} €</td><td>{sale.roi_pct}%</td><td><button className="secondary" onClick={() => setEditingSale({ sale, quantity: String(sale.quantity), price: fen2yuan(sale.unit_price_eur_cents), fees: fen2yuan(sale.fees_eur_cents) })}>Editar</button></td></tr>)}{(sales || []).length === 0 && <tr><td colSpan={8} className="muted">Sin ventas todavía.</td></tr>}</tbody></table></div>
+      <tbody>{(sales || []).map((sale) => <tr key={sale.id}><td>{sale.bundle_image_paths?.length ? <div className="sale-bundle-thumbs">{sale.bundle_image_paths.slice(0, 4).map((path, index) => <img key={`${path}-${index}`} src={`/images/${path}`} alt="" />)}</div> : sale.image_path && <img className="thumb" src={`/images/${sale.image_path}`} alt="" />}</td><td>{sale.bundle_name && <div><span className="offer-type-badge">Bundle</span> <strong>{sale.bundle_name}</strong></div>}{sale.card_id ? <a href={`#/cards/${sale.card_id}`}>{sale.name_en || sale.name}</a> : (sale.name_en || sale.name)}<div className="muted">{sale.set_code}·{sale.collector_number}</div></td><td>{sale.quantity}</td><td>{fen2yuan(sale.revenue_eur_cents)} €</td><td>{fen2yuan(sale.cost_eur_cents)} €</td><td className={sale.profit_eur_cents >= 0 ? 'ok' : 'err'}>{fen2yuan(sale.profit_eur_cents)} €</td><td>{sale.roi_pct}%</td><td><button className="secondary" onClick={() => setEditingSale({ sale, quantity: String(sale.quantity), price: fen2yuan(sale.unit_price_eur_cents), fees: fen2yuan(sale.fees_eur_cents) })}>Editar</button>{' '}<button className="secondary danger-button" onClick={() => deleteSale(sale)}>Eliminar</button></td></tr>)}{(sales || []).length === 0 && <tr><td colSpan={8} className="muted">Sin ventas todavía.</td></tr>}</tbody></table></div>
 
     {selling && <Modal title={`Vender · ${selling.listing.name_en || selling.listing.name}`} onClose={() => setSelling(null)} actions={<><button className="secondary" onClick={() => setSelling(null)}>Cancelar</button><button onClick={confirmSell}>Confirmar venta</button></>}>
       <div className="field"><label>Cantidad</label><input type="number" min="1" value={selling.quantity} onChange={(e) => setSelling({ ...selling, quantity: e.target.value })} /></div>

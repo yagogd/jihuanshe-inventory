@@ -104,6 +104,32 @@ def _settings(tmp_path):
     )
 
 
+def test_footer_does_not_finish_while_an_image_is_still_missing(tmp_path, monkeypatch):
+    settings = _settings(tmp_path)
+    object.__setattr__(settings, "capture_images", True)
+    extractor = UIAutomatorExtractor(FakeAdb(["first", "second"]), settings)
+
+    class Session:
+        footer = {"reached": True, "total_paid_fen": 100}
+        warnings = []
+
+        def __init__(self):
+            self.ingests = 0
+
+        def ingest(self, _xml, _shot):
+            self.ingests += 1
+
+        def snapshot(self):
+            return {"images_complete": self.ingests >= 2}
+
+    monkeypatch.setattr(extractor, "capture_current", lambda verify_image=False: ("xml", b"shot"))
+    session = Session()
+    extractor._scroll_to_bottom(session)
+
+    assert session.ingests == 2
+    assert extractor.adb.swipes_up == 1
+
+
 def test_full_scroll_captures_header_items_and_footer(tmp_path):
     a = [_item("A", "001"), _item("B", "002"), _item("C", "003")]
     b = [_item("B", "002"), _item("C", "003"), _item("D", "004"), _item("E", "005")]

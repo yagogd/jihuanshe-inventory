@@ -62,6 +62,8 @@ export default function InventoryPage() {
   const [uploading, setUploading] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [modal, setModal] = useState(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
   function buildParams() {
     const params = {
@@ -88,7 +90,16 @@ export default function InventoryPage() {
       .catch((e) => setError(e.message))
   }
 
-  useEffect(load, [filters])
+  useEffect(() => {
+    setPage(1)
+    load()
+  }, [filters])
+
+  useEffect(() => {
+    api.getSettings()
+      .then((settings) => setPageSize(settings.inventory_page_size || 20))
+      .catch((e) => setError(e.message))
+  }, [])
 
   useEffect(() => {
     api.listInventory().then((rows) => {
@@ -102,6 +113,7 @@ export default function InventoryPage() {
   }, [])
 
   function changeSort(field) {
+    setPage(1)
     setSort((current) => ({
       field,
       direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
@@ -197,6 +209,10 @@ export default function InventoryPage() {
       : String(left ?? '').localeCompare(String(right ?? ''), 'es', { numeric: true })
     return sort.direction === 'asc' ? result : -result
   }) : lots
+  const pageCount = Math.max(1, Math.ceil(sortedLots.length / pageSize))
+  const currentPage = Math.min(page, pageCount)
+  const pageStart = (currentPage - 1) * pageSize
+  const visibleLots = sortedLots.slice(pageStart, pageStart + pageSize)
 
   return (
     <div>
@@ -375,7 +391,7 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedLots.map((lot) => (
+            {visibleLots.map((lot) => (
               <tr key={lot.id}>
                 <td>
                   {lot.image_path && (
@@ -441,6 +457,43 @@ export default function InventoryPage() {
           </tbody>
         </table>
       </div>
+
+      {sortedLots.length > 0 && (
+        <div className="row inventory-pagination" style={{ marginTop: 14, justifyContent: 'space-between' }}>
+          <span className="muted">
+            Mostrando {pageStart + 1}–{Math.min(pageStart + pageSize, sortedLots.length)} de {sortedLots.length}
+          </span>
+          <div className="row">
+            <button
+              className="secondary"
+              onClick={() => setPage((value) => Math.max(1, value - 1))}
+              disabled={currentPage === 1}
+            >
+              Anterior
+            </button>
+            <label className="row" style={{ gap: 6 }}>
+              <span>Página</span>
+              <select
+                value={currentPage}
+                onChange={(e) => setPage(Number(e.target.value))}
+                aria-label="Ir a la página"
+              >
+                {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+                  <option key={pageNumber} value={pageNumber}>{pageNumber}</option>
+                ))}
+              </select>
+              <span>de {pageCount}</span>
+            </label>
+            <button
+              className="secondary"
+              onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+              disabled={currentPage === pageCount}
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <Modal

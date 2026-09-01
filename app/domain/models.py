@@ -60,6 +60,7 @@ class AppSettings(Base):
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
     fx_mode: Mapped[str] = mapped_column(String, default="historical")
     display_currency: Mapped[str] = mapped_column(String, default="EUR")
+    inventory_page_size: Mapped[int] = mapped_column(Integer, default=20)
 
 
 class Marketplace(Base):
@@ -209,6 +210,7 @@ class OrderItem(Base):
         SAEnum(ItemOrigin, native_enum=False), default=ItemOrigin.SCRAPED
     )
     include_in_allocation: Mapped[bool] = mapped_column(Boolean, default=True)
+    excluded_from_inventory: Mapped[bool] = mapped_column(Boolean, default=False)
     image_path: Mapped[str | None] = mapped_column(String, nullable=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -227,6 +229,7 @@ class Shipment(Base):
     __tablename__ = "shipments"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     status: Mapped[ShipmentStatus] = mapped_column(
         SAEnum(ShipmentStatus, native_enum=False), default=ShipmentStatus.PREPARING
     )

@@ -34,6 +34,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _migrate()
     _backfill_cards()
+    _repair_card_image_paths()
     _backfill_lots()
     _seed_cost_categories()
     _remap_legacy_costs()
@@ -71,8 +72,18 @@ def _migrate() -> None:
             "display_name": "VARCHAR",
         },
     )
-    add_columns("order_items", {"card_id": "VARCHAR"})
-    add_columns("settings", {"fx_mode": "VARCHAR", "display_currency": "VARCHAR DEFAULT 'EUR'"})
+    add_columns(
+        "order_items",
+        {"card_id": "VARCHAR", "excluded_from_inventory": "BOOLEAN DEFAULT 0"},
+    )
+    add_columns(
+        "settings",
+        {
+            "fx_mode": "VARCHAR",
+            "display_currency": "VARCHAR DEFAULT 'EUR'",
+            "inventory_page_size": "INTEGER DEFAULT 20",
+        },
+    )
     add_columns(
         "inventory_lots",
         {
@@ -92,6 +103,7 @@ def _migrate() -> None:
     add_columns(
         "shipments",
         {
+            "display_name": "VARCHAR",
             "total_paid_eur_cents": "INTEGER DEFAULT 0",
             "fx_cny_eur": "FLOAT DEFAULT 0.13",
             "fx_source": "VARCHAR DEFAULT 'fixed'",
@@ -137,6 +149,34 @@ def _backfill_cards() -> None:
 
     with SessionLocal() as session:
         backfill_cards(session)
+
+
+def _repair_card_image_paths() -> None:
+    """Replace stale temporary card paths with an existing order-item image."""
+    from sqlalchemy import select
+
+    from app.domain import models as m
+
+    images_dir = get_settings().images_dir
+    with SessionLocal() as session:
+        cards = list(session.scalars(select(m.Card)))
+        changed = False
+        for card in cards:
+            if card.image_path and (images_dir / card.image_path).is_file():
+                continue
+            replacement = next(
+                (
+                    item.image_path
+                    for item in card.items
+                    if item.image_path and (images_dir / item.image_path).is_file()
+                ),
+                None,
+            )
+            if replacement != card.image_path:
+                card.image_path = replacement
+                changed = True
+        if changed:
+            session.commit()
 
 
 def _backfill_lots() -> None:

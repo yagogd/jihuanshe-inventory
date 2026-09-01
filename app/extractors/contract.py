@@ -69,6 +69,18 @@ class CapturePreview:
     error: str | None = None
 
 
+@dataclass
+class ListedOrder:
+    jihuanshe_order_id: str
+    state: str
+    seller: str | None
+    bounds: tuple[int, int, int, int]
+
+    @property
+    def cancelled(self) -> bool:
+        return "取消" in self.state or "关闭" in self.state
+
+
 class OrderExtractor(Protocol):
     def status(self) -> CaptureStatus: ...
 

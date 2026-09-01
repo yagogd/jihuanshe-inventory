@@ -29,6 +29,7 @@ export default function ImportPage({ manual = false }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(null)
+  const [bulkResult, setBulkResult] = useState(null)
 
   useEffect(() => {
     if (!manual) return
@@ -84,6 +85,20 @@ export default function ImportPage({ manual = false }) {
         return
       }
       applyPreview(data)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function importAll() {
+    setError(null)
+    setSaved(null)
+    setBulkResult(null)
+    setBusy(true)
+    try {
+      setBulkResult(await api.importAllOrders())
     } catch (e) {
       setError(e.message)
     } finally {
@@ -164,6 +179,9 @@ export default function ImportPage({ manual = false }) {
           <button onClick={doAutoPreview} disabled={busy}>
             {busy ? 'Capturando…' : 'Capturar orden automáticamente'}
           </button>
+          <button className="secondary" onClick={importAll} disabled={busy}>
+            {busy ? 'Procesando listado…' : 'Escanear todas las órdenes nuevas'}
+          </button>
         </div>
         {status && (
           <div style={{ marginTop: 10 }}>
@@ -187,6 +205,54 @@ export default function ImportPage({ manual = false }) {
         <div className="card">
           <span className="ok">Orden guardada: {saved.id}</span>{' '}
           <a href={`#/orders/${saved.id}`}>Ver detalle</a>
+        </div>
+      )}
+
+      {bulkResult && (
+        <div className="card">
+          <h3>Escaneo del listado terminado</h3>
+          <div className={bulkResult.failed ? 'warn' : 'ok'}>
+            {bulkResult.imported} importadas · {bulkResult.already_registered} ya registradas ·{' '}
+            {bulkResult.cancelled} canceladas omitidas · {bulkResult.failed} con error
+          </div>
+          {!bulkResult.reached_end && (
+            <div className="warn" style={{ marginTop: 8 }}>
+              Se alcanzó el límite de desplazamientos antes de confirmar el final.
+            </div>
+          )}
+          {bulkResult.items.some((item) => item.error) && (
+            <ul>
+              {bulkResult.items.filter((item) => item.error).map((item) => (
+                <li key={item.jihuanshe_order_id}>
+                  {item.jihuanshe_order_id}: {item.error}
+                </li>
+              ))}
+            </ul>
+          )}
+          <h4 style={{ marginBottom: 8 }}>Órdenes registradas</h4>
+          <table>
+            <thead>
+              <tr>
+                <th>Vendedor</th>
+                <th>Nº de pedido</th>
+                <th>Resultado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {bulkResult.items.filter((item) => item.order_id).map((item) => (
+                <tr key={item.jihuanshe_order_id}>
+                  <td>{item.seller || '—'}</td>
+                  <td>{item.jihuanshe_order_id}</td>
+                  <td>{item.status === 'imported' ? 'Nueva' : 'Ya registrada'}</td>
+                  <td><a href={`#/orders/${item.order_id}`}>Editar orden</a></td>
+                </tr>
+              ))}
+              {!bulkResult.items.some((item) => item.order_id) && (
+                <tr><td colSpan="4" className="muted">No hay órdenes registradas en este recorrido.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
