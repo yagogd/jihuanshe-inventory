@@ -82,6 +82,24 @@ body {
   font-size: 15px;
 }
 
+.settings-button,
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-text);
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.settings-button:hover,
+.button-link:hover { background: var(--accent-hover); }
+.button-link.secondary { background: var(--panel); border-color: var(--border-strong); color: var(--text); }
+
 /* ---- Nav ---- */
 
 nav {
@@ -269,6 +287,181 @@ td a:hover {
   border-radius: 5px;
   background: #f0ece2;
   border: 1px solid var(--border);
+}
+
+.item-image-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 76px;
+}
+
+.item-image-placeholder {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 62px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+
+.item-image-button {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.item-image-button:hover { color: var(--text); }
+.item-image-button input { display: none; }
+
+.card-detail-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card-detail-summary .summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 12px 14px;
+}
+
+.card-detail-summary .summary-item strong { font-size: 18px; font-weight: 600; }
+.card-detail-meta { font-size: 11px; line-height: 1.35; }
+.card-detail-sub-link { display: inline-block; margin-top: 4px; font-size: 11px; }
+.card-detail-cost-note { margin: -4px 0 12px; font-size: 12px; }
+
+.purchase-cost-list { display: flex; flex-direction: column; gap: 14px; }
+.purchase-cost-card { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.purchase-origin { display: flex; justify-content: space-between; gap: 16px; padding: 11px 14px; background: #faf7ef; border-bottom: 1px solid var(--border); }
+.purchase-origin-status { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.cost-equation { display: grid; grid-template-columns: 1fr auto 1.15fr auto 1.15fr auto 1.2fr; align-items: stretch; padding: 14px; gap: 8px; }
+.cost-block { min-width: 0; padding: 10px; border-radius: 7px; background: #faf9f5; }
+.cost-block-total { background: var(--accent-soft); }
+.cost-block-label { display: block; color: var(--muted); font-size: 11px; font-weight: 600; margin-bottom: 5px; }
+.cost-block > strong { display: block; font-size: 15px; font-weight: 600; }
+.cost-block-detail { display: flex; flex-direction: column; gap: 3px; margin-top: 7px; color: var(--muted); font-size: 10.5px; line-height: 1.3; }
+.cost-block-detail .muted { font-size: inherit !important; }
+.allocation-detail { margin-top: 4px; padding-top: 5px; border-top: 1px dashed var(--border); font-size: 10px; }
+.allocation-criterion { display: block; margin-bottom: 3px; color: var(--text); }
+.cost-operator { align-self: center; color: var(--muted); font-size: 20px; }
+
+@media (max-width: 900px) {
+  .cost-equation { grid-template-columns: 1fr; }
+  .cost-operator { display: none; }
+  .card-detail-summary { grid-template-columns: 1fr; }
+}
+
+.card > .row .language-flag {
+  width: 22px;
+  height: 15px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+}
+
+/* Compact inventory listing: keep the denser layout local to this table. */
+.inventory-table th,
+.inventory-table td {
+  padding: 7px 8px;
+}
+
+.inventory-table .thumb {
+  width: 36px;
+  height: 49px;
+}
+
+.inventory-table button {
+  padding: 5px 7px;
+  font-size: 12px;
+}
+
+.inventory-table .language-flag {
+  display: block;
+  width: 24px;
+  height: 16px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+  overflow: hidden;
+  background: transparent;
+}
+
+.inventory-table .language-flag-cn { background: #de2910; }
+.inventory-table .language-flag-gb { background: #012169; }
+.inventory-table .language-flag-jp,
+.inventory-table .language-flag-kr { background: #fff; }
+
+.inventory-cost {
+  white-space: nowrap;
+  line-height: 1.2;
+  font-weight: 400;
+  text-align: right;
+}
+
+.inventory-cost *,
+.inventory-quantity {
+  font-weight: 400;
+}
+
+.inventory-cost .muted {
+  font-size: inherit !important;
+  color: inherit;
+}
+
+.inventory-name-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inventory-table .inventory-col-image { width: 48px; }
+.inventory-table .inventory-col-name { width: auto; }
+.inventory-table .inventory-col-set { width: 155px; }
+.inventory-table .inventory-col-condition { width: 86px; }
+.inventory-table .inventory-col-language { width: 68px; }
+.inventory-table .inventory-col-tags { width: 112px; }
+.inventory-table .inventory-col-number { width: 72px; }
+.inventory-table .inventory-col-cost { width: 96px; }
+.inventory-table .inventory-col-actions { width: 130px; }
+
+.inventory-table .numeric-cell,
+.inventory-table th:nth-child(7),
+.inventory-table th:nth-child(8),
+.inventory-table th:nth-child(9) {
+  text-align: right;
+}
+
+.inventory-table th:nth-child(7) .table-sort-button,
+.inventory-table th:nth-child(8) .table-sort-button,
+.inventory-table th:nth-child(9) .table-sort-button {
+  width: 100%;
+  text-align: right;
+}
+
+.inventory-table .table-sort-button {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inventory-table .table-sort-button:hover {
+  color: var(--text);
 }
 
 /* ---- Utility ---- */

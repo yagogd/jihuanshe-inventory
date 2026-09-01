@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 import Badge from '../components/Badge.jsx'
 import Money from '../components/Money.jsx'
+import ItemImagePicker from '../components/ItemImagePicker.jsx'
 
 const STATUSES = ['PURCHASED', 'IN_TRANSIT_TO_WAREHOUSE', 'AT_WAREHOUSE']
 const METHODS = ['BY_VALUE', 'BY_QUANTITY', 'MANUAL']
@@ -176,7 +177,13 @@ export default function OrderDetailPage({ id }) {
     </div>
     <table><thead><tr><th></th><th>Nombre</th><th>Qty</th><th>Precio ¥</th><th>Set</th><th>Nº</th><th>Variante</th><th>Promo</th><th></th></tr></thead>
       <tbody>{form.items.map((item, index) => <tr key={item.id || index}>
-        <td>{item.image_path && <img className="thumb" src={`/images/${item.image_path}`} alt="" />}</td>
+        <td>
+          <ItemImagePicker
+            imagePath={item.image_path}
+            onChange={(image_path) => updateItem(index, { image_path })}
+            onError={setError}
+          />
+        </td>
         <td>
           <input value={item.normalized_name} title={item.raw_name} onChange={(e) => updateItem(index, { normalized_name: e.target.value })} />
           {item.name_en && <div className="muted" style={{ fontSize: 12 }}>{item.name_en}</div>}

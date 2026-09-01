@@ -115,6 +115,8 @@ def test_import_preview_and_create_order():
             detail = client.get(f"/api/orders/{body['id']}").json()
             assert detail["id"] == body["id"]
             assert detail["items"][0]["raw_name"] == "卡A"
+            assert detail["seller"] == "测试卖家"
+            assert detail["domestic_shipping_fen"] == 800
 
             payload["seller"] = "Vendedor editado"
             payload["items"][0]["quantity"] = 3

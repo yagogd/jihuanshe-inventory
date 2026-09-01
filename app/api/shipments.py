@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.domain.inventory import receive_shipment
+from app.domain.enums import ShipmentStatus
 from app.domain.models import CostCategory, Order, OrderItem, Shipment, ShipmentCost
 from app.domain.schemas import (
     CostCategoryIn,
@@ -71,6 +72,10 @@ def update_shipment_endpoint(
     shipment = _load(shipment_id, db)
     try:
         update_shipment(db, shipment, payload)
+        if payload.status == ShipmentStatus.RECEIVED:
+            # Selecting RECEIVED in the edit form is the receive action too.
+            # receive_shipment is idempotent and only creates missing lots.
+            receive_shipment(db, shipment)
     except ShipmentError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return shipment_to_dict(_load(shipment_id, db))

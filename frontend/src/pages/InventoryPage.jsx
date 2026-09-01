@@ -1,11 +1,28 @@
 import React, { useEffect, useState } from 'react'
-import { api, fen2yuan, yuan2fen } from '../api.js'
+import { api, yuan2fen } from '../api.js'
 import Badge from '../components/Badge.jsx'
 import Condition from '../components/Condition.jsx'
 import LanguageFlag from '../components/LanguageFlag.jsx'
+import Money from '../components/Money.jsx'
 import Modal from '../components/Modal.jsx'
 
 const CURRENCIES = ['EUR', 'CNY', 'USD']
+
+const SORT_FIELDS = {
+  name: (lot) => lot.name,
+  set: (lot) => `${lot.set_code || ''} ${lot.collector_number || ''}`,
+  condition: (lot) => lot.condition,
+  language: (lot) => lot.language,
+  variant: (lot) => `${lot.foil ? 'foil' : ''} ${lot.promo ? 'promo' : ''}`,
+  quantity: (lot) => lot.quantity,
+  available: (lot) => lot.available,
+  cost: (lot) => lot.unit_cost_eur_cents,
+}
+
+function uniqueValues(rows, field) {
+  return [...new Set(rows.map((row) => row[field]).filter(Boolean))]
+    .sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }))
+}
 
 const emptyForm = () => ({
   game: '',
@@ -36,6 +53,8 @@ const emptyFilters = () => ({
 
 export default function InventoryPage() {
   const [lots, setLots] = useState(null)
+  const [filterOptions, setFilterOptions] = useState({})
+  const [sort, setSort] = useState({ field: null, direction: 'asc' })
   const [filters, setFilters] = useState(emptyFilters())
   const [error, setError] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -70,6 +89,24 @@ export default function InventoryPage() {
   }
 
   useEffect(load, [filters])
+
+  useEffect(() => {
+    api.listInventory().then((rows) => {
+      setFilterOptions({
+        game: uniqueValues(rows, 'game'),
+        set_code: uniqueValues(rows, 'set_code'),
+        condition: uniqueValues(rows, 'condition'),
+        language: uniqueValues(rows, 'language'),
+      })
+    }).catch((e) => setError(e.message))
+  }, [])
+
+  function changeSort(field) {
+    setSort((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
 
   function openAction(lot, kind) {
     setModal({ kind, lot, quantity: '1', price: '', fees: '0' })
@@ -152,6 +189,16 @@ export default function InventoryPage() {
   if (error && !lots) return <div className="err">{error}</div>
   if (!lots) return <div className="muted">Cargando…</div>
 
+  const sortedLots = sort.field ? [...lots].sort((a, b) => {
+    const getter = SORT_FIELDS[sort.field]
+    const left = getter(a)
+    const right = getter(b)
+    const result = typeof left === 'number' && typeof right === 'number'
+      ? left - right
+      : String(left ?? '').localeCompare(String(right ?? ''), 'es', { numeric: true })
+    return sort.direction === 'asc' ? result : -result
+  }) : lots
+
   return (
     <div>
       <h1>Inventario</h1>
@@ -168,31 +215,45 @@ export default function InventoryPage() {
         </div>
         <div className="field">
           <label>Juego</label>
-          <input
+          <select
             value={filters.game}
             onChange={(e) => setFilters({ ...filters, game: e.target.value })}
-          />
+          >
+            <option value="">Todos</option>
+            {(filterOptions.game || []).map((value) => <option key={value}>{value}</option>)}
+          </select>
         </div>
         <div className="field">
           <label>Set</label>
-          <input
+          <select
             value={filters.set_code}
             onChange={(e) => setFilters({ ...filters, set_code: e.target.value })}
-          />
+          >
+            <option value="">Todos</option>
+            {(filterOptions.set_code || []).map((value) => <option key={value}>{value}</option>)}
+          </select>
         </div>
         <div className="field">
           <label>Condición</label>
-          <input
+          <select
             value={filters.condition}
             onChange={(e) => setFilters({ ...filters, condition: e.target.value })}
-          />
+          >
+            <option value="">Todas</option>
+            {(filterOptions.condition || []).map((value) => <option key={value}>{value}</option>)}
+          </select>
         </div>
         <div className="field">
           <label>Idioma</label>
-          <input
+          <select
             value={filters.language}
             onChange={(e) => setFilters({ ...filters, language: e.target.value })}
-          />
+          >
+            <option value="">Todos</option>
+            {(filterOptions.language || []).map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </select>
         </div>
         <div className="field">
           <label>Origen</label>
@@ -291,24 +352,31 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card inventory-table" style={{ padding: 0, overflow: 'hidden' }}>
         <table>
+          <colgroup>
+            <col className="inventory-col-image" /><col className="inventory-col-name" />
+            <col className="inventory-col-set" /><col className="inventory-col-condition" />
+            <col className="inventory-col-language" /><col className="inventory-col-tags" />
+            <col className="inventory-col-number" /><col className="inventory-col-number" />
+            <col className="inventory-col-cost" /><col className="inventory-col-actions" />
+          </colgroup>
           <thead>
             <tr>
               <th></th>
-              <th>Nombre</th>
-              <th>Set/Nº</th>
-              <th>Cond.</th>
-              <th>Idioma</th>
-              <th>Foil/Promo</th>
-              <th>Disp.</th>
-              <th>Total</th>
-              <th>Coste €</th>
+              <SortHeader label="Nombre" field="name" sort={sort} onSort={changeSort} />
+              <SortHeader label="Set/Nº" field="set" sort={sort} onSort={changeSort} />
+              <SortHeader label="Cond." field="condition" sort={sort} onSort={changeSort} />
+              <SortHeader label="Idioma" field="language" sort={sort} onSort={changeSort} />
+              <SortHeader label="Foil/Promo" field="variant" sort={sort} onSort={changeSort} />
+              <SortHeader label="Total" field="quantity" sort={sort} onSort={changeSort} />
+              <SortHeader label="Disp." field="available" sort={sort} onSort={changeSort} />
+              <SortHeader label="Coste" field="cost" sort={sort} onSort={changeSort} />
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {lots.map((lot) => (
+            {sortedLots.map((lot) => (
               <tr key={lot.id}>
                 <td>
                   {lot.image_path && (
@@ -316,10 +384,14 @@ export default function InventoryPage() {
                   )}
                 </td>
                 <td>
-                  <a href={`#/cards/${lot.card_id}`}>{lot.name}</a>
-                  {lot.source === 'PENDING' && (
-                    <Badge tone="warn" style={{ marginLeft: 6 }}>Pendiente</Badge>
-                  )}
+                  <div className="inventory-name-line">
+                    {lot.card_id ? (
+                      <a href={`#/cards/${lot.card_id}`}>{lot.name}</a>
+                    ) : (
+                      <span>{lot.name}</span>
+                    )}
+                    {lot.source === 'PENDING' && <Badge tone="warn">Pendiente</Badge>}
+                  </div>
                   {lot.name_en && (
                     <div className="muted" style={{ fontSize: 12 }}>{lot.name_en}</div>
                   )}
@@ -333,14 +405,16 @@ export default function InventoryPage() {
                   {lot.foil && <Badge tone="warn">Foil</Badge>}{' '}
                   {lot.promo && <Badge tone="neutral">Promo</Badge>}
                 </td>
-                <td>
-                  <strong>{lot.available}</strong>
-                </td>
-                <td className="muted">{lot.quantity}</td>
-                <td className="muted">
+                <td className="muted inventory-quantity numeric-cell">{lot.quantity}</td>
+                <td className="inventory-quantity numeric-cell">{lot.available}</td>
+                <td className="inventory-cost">
                   {lot.unit_cost_eur_cents == null
-                    ? '—'
-                    : fen2yuan(lot.unit_cost_eur_cents)}
+                    ? <span className="muted">—</span>
+                    : <Money
+                        eurCents={lot.unit_cost_eur_cents}
+                        cnyFen={lot.unit_cost_cny_fen}
+                        currency="CNY"
+                      />}
                 </td>
                 <td>
                   {lot.source !== 'PENDING' ? (
@@ -430,5 +504,16 @@ function Field({ label, value, set }) {
       <label>{label}</label>
       <input value={value} onChange={(e) => set(e.target.value)} />
     </div>
+  )
+}
+
+function SortHeader({ label, field, sort, onSort }) {
+  const active = sort.field === field
+  return (
+    <th aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button className="table-sort-button" onClick={() => onSort(field)}>
+        {label}<span aria-hidden="true">{active ? (sort.direction === 'asc' ? ' ↑' : ' ↓') : ''}</span>
+      </button>
+    </th>
   )
 }

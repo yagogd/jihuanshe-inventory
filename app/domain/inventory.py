@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.domain.cards import resolve_card
 from app.domain.conditions import normalize_condition
+from app.domain.costs import compute_order_landed
 from app.domain.enums import LotSource, MovementKind, ShipmentStatus
 from app.domain.fx import convert_to_eur
 from app.domain.models import InventoryLot, LotMovement, OrderItem, Shipment
@@ -30,12 +31,23 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
     """
     shipment.status = ShipmentStatus.RECEIVED
     created: list[InventoryLot] = []
+    unit_costs: dict[str, int] = {}
+    for order in shipment.orders:
+        landed = compute_order_landed(order, shipment)
+        for item_cost in landed["items"]:
+            quantity = item_cost["quantity"] or 1
+            unit_costs[item_cost["item_id"]] = round(
+                item_cost["landed_eur_cents"] / quantity
+            )
+
     for order in shipment.orders:
         for item in order.items:
             existing = db.scalar(
                 select(InventoryLot).where(InventoryLot.order_item_id == item.id)
             )
             if existing is not None:
+                if existing.unit_cost_eur_cents is None:
+                    existing.unit_cost_eur_cents = unit_costs.get(item.id, 0)
                 continue
             lot = InventoryLot(
                 order_item_id=item.id,
@@ -43,6 +55,7 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
                 source=LotSource.RECEIVE,
                 quantity=item.quantity,
                 available=item.quantity,
+                unit_cost_eur_cents=unit_costs.get(item.id, 0),
                 condition=normalize_condition(item.condition),
             )
             lot.movements.append(
@@ -161,6 +174,13 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         seller = item.order.seller
         purchase_date = item.order.purchase_date
 
+    fx = item.order.fx_cny_eur if item and item.order else 0.13
+    unit_cost_cny = (
+        round(lot.unit_cost_eur_cents / fx)
+        if lot.unit_cost_eur_cents is not None and fx > 0
+        else None
+    )
+
     return {
         "id": lot.id,
         "order_item_id": lot.order_item_id,
@@ -184,6 +204,7 @@ def lot_to_dict(lot: InventoryLot) -> dict:
         "quantity": lot.quantity,
         "available": lot.available,
         "unit_cost_eur_cents": lot.unit_cost_eur_cents,
+        "unit_cost_cny_fen": unit_cost_cny,
         "note": lot.note,
         "order_id": order_id,
         "seller": seller,
@@ -221,6 +242,7 @@ def pending_item_to_dict(item: OrderItem) -> dict:
         "quantity": item.quantity,
         "available": 0,
         "unit_cost_eur_cents": round(item.unit_price_fen * fx),
+        "unit_cost_cny_fen": item.unit_price_fen,
         "note": None,
         "order_id": item.order.id if item.order else None,
         "seller": item.order.seller if item.order else None,

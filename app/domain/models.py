@@ -223,6 +223,9 @@ class Shipment(Base):
     total_paid_eur_cents: Mapped[int] = mapped_column(Integer, default=0)
     fx_cny_eur: Mapped[float] = mapped_column(Float, default=0.13)
     fx_source: Mapped[str] = mapped_column(String, default="fixed")
+    cost_method: Mapped[AllocationMethod] = mapped_column(
+        SAEnum(AllocationMethod, native_enum=False), default=AllocationMethod.BY_VALUE
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
@@ -270,6 +273,14 @@ class ShipmentCost(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     shipment_id: Mapped[str] = mapped_column(String(36), ForeignKey("shipments.id"), index=True)
     category_id: Mapped[str] = mapped_column(String(36), ForeignKey("cost_categories.id"))
+
+    # Compatibility fields kept for databases created before cost categories
+    # and multi-currency amounts were introduced. Old SQLite schemas declare
+    # both columns NOT NULL, so inserts must continue supplying them.
+    legacy_type: Mapped[str] = mapped_column("type", String(13), default="custom")
+    legacy_amount_eur_cents: Mapped[int] = mapped_column(
+        "amount_eur_cents", Integer, default=0
+    )
 
     amount: Mapped[int] = mapped_column(Integer, default=0)
     currency: Mapped[Currency] = mapped_column(

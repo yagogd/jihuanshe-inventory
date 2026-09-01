@@ -59,15 +59,20 @@ def _apply(db: Session, shipment: Shipment, payload: ShipmentIn) -> None:
         shipment.fx_source = payload.fx_source
     if payload.fx_cny_eur is not None:
         shipment.fx_cny_eur = payload.fx_cny_eur
+    shipment.cost_method = payload.cost_method
 
     shipment.costs.clear()
     for position, cost in enumerate(payload.costs):
         shipment.costs.append(
             ShipmentCost(
                 category_id=cost.category_id,
+                legacy_type="custom",
+                legacy_amount_eur_cents=shipment_cost_eur_cents(
+                    cost, shipment.fx_cny_eur
+                ),
                 amount=cost.amount,
                 currency=cost.currency,
-                method=cost.method,
+                method=shipment.cost_method,
                 insured_amount=cost.insured_amount,
                 insured_currency=cost.insured_currency,
                 position=position,
@@ -120,6 +125,7 @@ def shipment_to_dict(shipment: Shipment) -> dict:
         "total_paid_eur_cents": shipment.total_paid_eur_cents,
         "fx_cny_eur": shipment.fx_cny_eur,
         "fx_source": shipment.fx_source,
+        "cost_method": shipment.cost_method,
         "created_at": shipment.created_at,
         "costs": [
             {

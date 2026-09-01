@@ -107,8 +107,8 @@ def persist_order(db: Session, payload: OrderIn) -> Order:
                 raw_name=item.raw_name,
                 normalized_name=item.normalized_name or item.raw_name,
                 game=item.game,
-                set_code=item.set_code,
-                collector_number=item.collector_number,
+                set_code=card.set_code if card is not None else item.set_code,
+                collector_number=card.collector_number if card is not None else item.collector_number,
                 language=item.language,
                 condition=normalize_condition(item.condition),
                 variant=item.variant,
@@ -226,8 +226,10 @@ def _reconcile_items(db: Session, order: Order, payload_items: list) -> None:
         item.raw_name = payload_item.raw_name
         item.normalized_name = payload_item.normalized_name or payload_item.raw_name
         item.game = payload_item.game
-        item.set_code = payload_item.set_code
-        item.collector_number = payload_item.collector_number
+        item.set_code = card.set_code if card is not None else payload_item.set_code
+        item.collector_number = (
+            card.collector_number if card is not None else payload_item.collector_number
+        )
         item.language = payload_item.language
         item.condition = normalize_condition(payload_item.condition)
         item.variant = payload_item.variant

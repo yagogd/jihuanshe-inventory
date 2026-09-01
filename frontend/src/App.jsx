@@ -7,7 +7,6 @@ import ShipmentsPage from './pages/ShipmentsPage.jsx'
 import ShipmentDetailPage from './pages/ShipmentDetailPage.jsx'
 import InventoryPage from './pages/InventoryPage.jsx'
 import SalesPage from './pages/SalesPage.jsx'
-import OverviewPage from './pages/OverviewPage.jsx'
 import CardDetailPage from './pages/CardDetailPage.jsx'
 
 function useHash() {
@@ -22,7 +21,7 @@ function useHash() {
 
 export default function App() {
   const hash = useHash()
-  let view = <ImportPage />
+  let view = <InventoryPage />
   if (hash.startsWith('#/shipments/')) {
     view = <ShipmentDetailPage id={hash.slice('#/shipments/'.length)} />
   } else if (hash === '#/shipments') {
@@ -33,8 +32,10 @@ export default function App() {
     view = <InventoryPage />
   } else if (hash === '#/sales') {
     view = <SalesPage />
-  } else if (hash === '#/overview') {
-    view = <OverviewPage />
+  } else if (hash === '#/orders/import') {
+    view = <ImportPage />
+  } else if (hash === '#/orders/new') {
+    view = <ImportPage manual />
   } else if (hash.startsWith('#/orders/')) {
     view = <OrderDetailPage id={hash.slice('#/orders/'.length)} />
   } else if (hash === '#/orders') {
@@ -44,26 +45,26 @@ export default function App() {
   }
 
   const links = [
-    ['#/overview', 'Resumen'],
-    ['#/', 'Importar'],
+    ['#/inventory', 'Inventario'],
     ['#/orders', 'Órdenes'],
     ['#/shipments', 'Envíos'],
-    ['#/inventory', 'Inventario'],
     ['#/sales', 'Ventas'],
-    ['#/settings', 'Ajustes'],
   ]
 
   const isActive = (href) => {
-    if (href === '#/') return hash === '' || hash === '#/' || hash === '#'
+    if (href === '#/inventory') return hash === '' || hash === '#/' || hash === '#' || hash === href
     return hash === href || hash.startsWith(href + '/')
   }
 
   return (
     <div className="app">
       <header className="app-header">
-        <a className="brand" href="#/overview">
+        <a className="brand" href="#/inventory">
           <span className="logo">J</span>
           Jihuanshe Tracker
+        </a>
+        <a className="settings-button" href="#/settings" aria-label="Ajustes" title="Ajustes">
+          ⚙ Ajustes
         </a>
       </header>
       <nav>

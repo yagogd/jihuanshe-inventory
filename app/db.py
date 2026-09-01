@@ -92,12 +92,15 @@ def _migrate() -> None:
             "total_paid_eur_cents": "INTEGER DEFAULT 0",
             "fx_cny_eur": "FLOAT DEFAULT 0.13",
             "fx_source": "VARCHAR DEFAULT 'fixed'",
+            "cost_method": "VARCHAR DEFAULT 'BY_VALUE'",
         },
     )
     add_columns(
         "shipment_costs",
         {
             "category_id": "VARCHAR",
+            "type": "VARCHAR DEFAULT 'custom'",
+            "amount_eur_cents": "INTEGER DEFAULT 0",
             "amount": "INTEGER DEFAULT 0",
             "currency": "VARCHAR DEFAULT 'EUR'",
             "insured_amount": "INTEGER",
@@ -110,6 +113,7 @@ def _migrate() -> None:
         conn.execute(text("UPDATE settings SET fx_mode = 'historical' WHERE fx_mode IS NULL"))
         conn.execute(text("UPDATE orders SET fx_source = 'fixed' WHERE fx_source = 'manual'"))
         conn.execute(text("UPDATE shipments SET fx_source = 'fixed' WHERE fx_source IS NULL"))
+        conn.execute(text("UPDATE shipments SET cost_method = 'BY_VALUE' WHERE cost_method IS NULL"))
         conn.execute(
             text(
                 "UPDATE order_items SET condition = 'NM' "

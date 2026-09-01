@@ -33,6 +33,10 @@ export default function OrdersPage() {
     <div>
       <h1>Órdenes</h1>
       <div className="row" style={{ marginBottom: 16 }}>
+        <a className="button-link" href="#/orders/import">Añadir por escaneo</a>
+        <a className="button-link secondary" href="#/orders/new">Añadir manualmente</a>
+      </div>
+      <div className="row" style={{ marginBottom: 16 }}>
         <button className={filter === null ? undefined : 'secondary'} onClick={() => setFilter(null)}>
           Todas
         </button>

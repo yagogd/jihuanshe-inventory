@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
+import ItemImagePicker from '../components/ItemImagePicker.jsx'
 
 function newItem() {
   return {
@@ -21,13 +22,26 @@ function newItem() {
   }
 }
 
-export default function ImportPage() {
+export default function ImportPage({ manual = false }) {
   const [status, setStatus] = useState(null)
   const [preview, setPreview] = useState(null)
   const [form, setForm] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [saved, setSaved] = useState(null)
+
+  useEffect(() => {
+    if (!manual) return
+    setPreview({
+      session_id: null, raw_dumps: [], warnings: [], declared_item_count: null,
+      subtotal_fen: 0, declared_subtotal_fen: null, declared_total_paid_fen: null,
+      suggested_alipay_fee_fen: 0, fx_cny_eur: 0.13,
+    })
+    setForm({
+      seller: '', jihuanshe_order_id: '', purchase_date: '', express_company: '',
+      express_tracking: '', domestic_shipping: '0', total_paid: '', items: [newItem()],
+    })
+  }, [manual])
 
   async function detect() {
     setError(null)
@@ -140,9 +154,9 @@ export default function ImportPage() {
 
   return (
     <div>
-      <h1>Importar orden</h1>
+      <h1>{manual ? 'Añadir orden manualmente' : 'Añadir orden por escaneo'}</h1>
 
-      <div className="card">
+      {!manual && <div className="card">
         <div className="row">
           <button onClick={detect} disabled={busy}>
             Detectar pantalla
@@ -167,7 +181,7 @@ export default function ImportPage() {
           </div>
         )}
         {error && <div className="err" style={{ marginTop: 10 }}>{error}</div>}
-      </div>
+      </div>}
 
       {saved && (
         <div className="card">
@@ -254,9 +268,11 @@ export default function ImportPage() {
               {form.items.map((item, index) => (
                 <tr key={index}>
                   <td>
-                    {item.image_path && (
-                      <img className="thumb" src={`/images/${item.image_path}`} alt="" />
-                    )}
+                    <ItemImagePicker
+                      imagePath={item.image_path}
+                      onChange={(image_path) => updateItem(index, { image_path })}
+                      onError={setError}
+                    />
                   </td>
                   <td>
                     <input

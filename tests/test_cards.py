@@ -12,6 +12,9 @@ def test_card_identity_requires_set_and_number():
     assert card_identity(None, "OGN", "078/298") == ("", "OGN", "078/298")
     assert card_identity("符文战场", None, "078/298") is None
     assert card_identity("符文战场", "OGN", None) is None
+    assert card_identity("符文战场", None, "FND-007/298") == (
+        "符文战场", "FND", "007/298"
+    )
 
 
 def test_resolve_creates_then_reuses():
@@ -75,3 +78,53 @@ def test_import_links_items_to_cards():
         card = db.get(Card, items[0].card_id)
         assert card.name_zh == "卡牌链接测试"
         assert card.set_code == "ZZZ"
+
+
+def test_card_detail_includes_origin_and_landed_cost_breakdown():
+    with TestClient(app) as client:
+        order = client.post(
+            "/api/orders",
+            json={
+                "seller": "Vendedor ficha",
+                "purchase_date": "2026-08-20",
+                "domestic_shipping_fen": 50,
+                "alipay_fee_fen": 10,
+                "items": [{
+                    "raw_name": "Carta ficha completa",
+                    "game": "Test",
+                    "set_code": "DET",
+                    "collector_number": "1/1",
+                    "quantity": 2,
+                    "unit_price_fen": 100,
+                }],
+            },
+        ).json()
+        category = next(
+            row for row in client.get("/api/cost-categories").json()
+            if row["name"] == "Internacional"
+        )
+        shipment = client.post(
+            "/api/shipments",
+            json={
+                "order_ids": [order["id"]],
+                "total_paid_eur_cents": 100,
+                "costs": [{"category_id": category["id"], "amount": 100, "currency": "EUR"}],
+            },
+        ).json()
+        client.post(f"/api/shipments/{shipment['id']}/receive")
+
+        card_id = next(
+            row["id"] for row in client.get("/api/cards", params={"q": "DET"}).json()
+            if row["collector_number"] == "1/1"
+        )
+        detail = client.get(f"/api/cards/{card_id}")
+        assert detail.status_code == 200, detail.text
+        purchase = detail.json()["purchases"][0]
+        assert purchase["seller"] == "Vendedor ficha"
+        assert purchase["shipment_id"] == shipment["id"]
+        assert purchase["purchase_cny_fen"] == 200
+        assert purchase["domestic_cny_fen"] == 50
+        assert purchase["alipay_cny_fen"] == 10
+        assert purchase["shipment_alloc_cents"] == {"Internacional": 100}
+        assert purchase["landed_eur_cents"] == 134
+        assert purchase["unit_landed_eur_cents"] == 67

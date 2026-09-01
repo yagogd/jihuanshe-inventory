@@ -7,11 +7,13 @@ name is stored as scraped; the English name is filled once (see
 from __future__ import annotations
 
 from collections import defaultdict
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.domain.models import Card, InventoryLot, OrderItem
+from app.domain.costs import compute_order_landed
+from app.domain.models import Card, InventoryLot, Order, OrderItem, Shipment, ShipmentCost
 
 
 def card_identity(
@@ -24,6 +26,10 @@ def card_identity(
     """
     set_code = (set_code or "").strip()
     number = (collector_number or "").strip()
+    if not set_code and number:
+        combined = re.fullmatch(r"([A-Za-z0-9]+)-(.+?/\d+)", number)
+        if combined:
+            set_code, number = combined.groups()
     if not set_code or not number:
         return None
     return ((game or "").strip(), set_code, number)
@@ -106,6 +112,8 @@ def backfill_cards(db: Session) -> int:
         )
         if card is not None:
             item.card_id = card.id
+            item.set_code = card.set_code
+            item.collector_number = card.collector_number
             linked += 1
     if linked:
         db.commit()
@@ -212,6 +220,23 @@ def card_detail(db: Session, card: Card) -> dict:
         .where(OrderItem.card_id == card.id)
         .order_by(OrderItem.position)
     ):
+        order = item.order
+        shipment = None
+        if order and order.shipment_id:
+            shipment = db.scalar(
+                select(Shipment)
+                .options(
+                    selectinload(Shipment.costs).selectinload(ShipmentCost.category),
+                    selectinload(Shipment.orders).selectinload(Order.items),
+                )
+                .where(Shipment.id == order.shipment_id)
+            )
+        landed_item = None
+        if order:
+            landed = compute_order_landed(order, shipment)
+            landed_item = next(
+                (row for row in landed["items"] if row["item_id"] == item.id), None
+            )
         purchases.append(
             {
                 "id": item.id,
@@ -223,6 +248,25 @@ def card_detail(db: Session, card: Card) -> dict:
                 "fx_cny_eur": item.order.fx_cny_eur if item.order else 0.13,
                 "condition": item.condition,
                 "image_path": item.image_path,
+                "order_name": order.display_name if order else None,
+                "order_status": order.status.value if order and order.status else None,
+                "express_company": order.express_company if order else None,
+                "express_tracking": order.express_tracking if order else None,
+                "shipment_id": order.shipment_id if order else None,
+                "purchase_cny_fen": landed_item["purchase_cny_fen"] if landed_item else 0,
+                "domestic_cny_fen": landed_item["domestic_cny_fen"] if landed_item else 0,
+                "alipay_cny_fen": landed_item["alipay_cny_fen"] if landed_item else 0,
+                "cny_eur_cents": landed_item["cny_eur_cents"] if landed_item else 0,
+                "shipment_alloc_cents": landed_item["shipment_alloc_cents"] if landed_item else {},
+                "shipment_eur_cents": landed_item["shipment_eur_cents"] if landed_item else 0,
+                "landed_eur_cents": landed_item["landed_eur_cents"] if landed_item else 0,
+                "unit_landed_eur_cents": round(
+                    landed_item["landed_eur_cents"] / item.quantity
+                ) if landed_item and item.quantity else 0,
+                "allocation_method": order.cost_method if order else "BY_VALUE",
+                "shipment_allocation_method": (
+                    shipment.cost_method if shipment else "BY_VALUE"
+                ),
             }
         )
 
@@ -241,6 +285,7 @@ def card_detail(db: Session, card: Card) -> dict:
                 "condition": lot.order_item.condition if lot.order_item else None,
                 "image_path": lot.image_path
                 or (lot.order_item.image_path if lot.order_item else None),
+                "order_item_id": lot.order_item_id,
             }
         )
 

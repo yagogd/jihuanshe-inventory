@@ -43,6 +43,7 @@ def test_shipment_create_and_assign():
             f"/api/shipments/{body['id']}",
             json={
                 "status": "SHIPPED",
+                "cost_method": "BY_QUANTITY",
                 "order_ids": [o1["id"]],
                 "total_paid_eur_cents": 2500,
                 "costs": [
@@ -63,6 +64,10 @@ def test_shipment_create_and_assign():
 
         detail = client.get(f"/api/shipments/{body['id']}").json()
         assert detail["id"] == body["id"]
+        assert detail["status"] == "SHIPPED"
+        assert detail["total_paid_eur_cents"] == 2500
+        assert detail["cost_method"] == "BY_QUANTITY"
+        assert all(cost["method"] == "BY_QUANTITY" for cost in detail["costs"])
 
 
 def test_shipment_rejects_mismatched_breakdown():
@@ -85,6 +90,112 @@ def test_shipment_rejects_mismatched_breakdown():
 def test_shipment_not_found():
     with TestClient(app) as client:
         assert client.get("/api/shipments/missing").status_code == 404
+
+
+def test_received_shipment_costs_can_be_edited_and_persisted():
+    with TestClient(app) as client:
+        order = _order(client)
+        international = _category_id(client, "Internacional")
+        created = client.post(
+            "/api/shipments",
+            json={"order_ids": [order["id"]], "total_paid_eur_cents": 0, "costs": []},
+        ).json()
+        received = client.post(f"/api/shipments/{created['id']}/receive")
+        assert received.status_code == 200, received.text
+
+        updated = client.put(
+            f"/api/shipments/{created['id']}",
+            json={
+                "status": "RECEIVED",
+                "order_ids": [order["id"]],
+                "total_paid_eur_cents": 7100,
+                "cost_method": "BY_QUANTITY",
+                "costs": [
+                    {"category_id": international, "amount": 7100, "currency": "EUR"}
+                ],
+            },
+        )
+        assert updated.status_code == 200, updated.text
+
+        detail = client.get(f"/api/shipments/{created['id']}").json()
+        assert detail["status"] == "RECEIVED"
+        assert detail["total_paid_eur_cents"] == 7100
+        assert detail["cost_method"] == "BY_QUANTITY"
+        assert detail["costs"][0]["amount"] == 7100
+
+
+def test_setting_shipment_status_to_received_materializes_inventory():
+    with TestClient(app) as client:
+        order = _order(client)
+        created = client.post(
+            "/api/shipments",
+            json={"order_ids": [order["id"]], "total_paid_eur_cents": 0, "costs": []},
+        ).json()
+
+        updated = client.put(
+            f"/api/shipments/{created['id']}",
+            json={
+                "status": "RECEIVED",
+                "order_ids": [order["id"]],
+                "total_paid_eur_cents": 0,
+                "costs": [],
+            },
+        )
+        assert updated.status_code == 200, updated.text
+
+        inventory = client.get("/api/inventory", params={"q": "carta"}).json()
+        received = [
+            row for row in inventory
+            if row["source"] == "RECEIVE"
+            and row["order_item_id"] == order["items"][0]["id"]
+        ]
+        assert len(received) == 1
+        assert received[0]["available"] == 1
+
+        # Saving RECEIVED again must not duplicate its inventory lot.
+        repeated = client.put(
+            f"/api/shipments/{created['id']}",
+            json={
+                "status": "RECEIVED",
+                "order_ids": [order["id"]],
+                "total_paid_eur_cents": 0,
+                "costs": [],
+            },
+        )
+        assert repeated.status_code == 200, repeated.text
+        inventory = client.get("/api/inventory", params={"q": "carta"}).json()
+        assert len([
+            row for row in inventory
+            if row["source"] == "RECEIVE"
+            and row["order_item_id"] == order["items"][0]["id"]
+        ]) == 1
+
+
+def test_receiving_shipment_stores_purchase_plus_shipping_unit_cost():
+    with TestClient(app) as client:
+        order = _order(client)  # 1 unit at 1.00 CNY; default FX 0.13 => 0.13 EUR
+        international = _category_id(client, "Internacional")
+        created = client.post(
+            "/api/shipments",
+            json={
+                "order_ids": [order["id"]],
+                "total_paid_eur_cents": 100,
+                "costs": [
+                    {"category_id": international, "amount": 100, "currency": "EUR"}
+                ],
+            },
+        ).json()
+
+        received = client.post(f"/api/shipments/{created['id']}/receive")
+        assert received.status_code == 200, received.text
+
+        inventory = client.get("/api/inventory", params={"q": "carta"}).json()
+        lot = next(
+            row for row in inventory
+            if row["source"] == "RECEIVE"
+            and row["order_item_id"] == order["items"][0]["id"]
+        )
+        assert lot["unit_cost_eur_cents"] == 113
 
 
 def test_create_custom_category():

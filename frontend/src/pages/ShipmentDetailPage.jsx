@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { api, fen2yuan, yuan2fen } from '../api.js'
 
 const STATUSES = ['PREPARING', 'SHIPPED', 'RECEIVED']
-const METHODS = ['BY_VALUE', 'BY_QUANTITY']
 const CURRENCIES = ['EUR', 'CNY', 'USD']
 
 function newLine() {
-  return { category_id: '', amount: '0', currency: 'EUR', method: 'BY_VALUE', insured_amount: '', insured_currency: 'EUR' }
+  return { category_id: '', amount: '0', currency: 'EUR', insured_amount: '', insured_currency: 'EUR' }
 }
 
 function toLines(costs) {
@@ -15,7 +14,6 @@ function toLines(costs) {
     category_id: cost.category_id,
     amount: fen2yuan(cost.amount),
     currency: cost.currency,
-    method: cost.method,
     insured_amount: cost.insured_amount == null ? '' : fen2yuan(cost.insured_amount),
     insured_currency: cost.insured_currency || 'EUR',
   }))
@@ -33,6 +31,7 @@ export default function ShipmentDetailPage({ id }) {
   const [categories, setCategories] = useState([])
   const [total, setTotal] = useState('0')
   const [fx, setFx] = useState('0.13')
+  const [costMethod, setCostMethod] = useState('BY_VALUE')
   const [lines, setLines] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [newCategory, setNewCategory] = useState('')
@@ -45,6 +44,7 @@ export default function ShipmentDetailPage({ id }) {
       setShipment(data)
       setTotal(fen2yuan(data.total_paid_eur_cents))
       setFx(String(data.fx_cny_eur))
+      setCostMethod(data.cost_method || 'BY_VALUE')
       setLines(toLines(data.costs))
       setSelected(new Set(data.orders.map((o) => o.id)))
     }).catch((e) => setError(e.message))
@@ -98,13 +98,13 @@ export default function ShipmentDetailPage({ id }) {
         order_ids: [...selected],
         total_paid_eur_cents: totalCents,
         fx_cny_eur: parseFloat(fx) || 0,
+        cost_method: costMethod,
         costs: lines
           .filter((line) => line.category_id)
           .map((line) => ({
             category_id: line.category_id,
             amount: yuan2fen(line.amount),
             currency: line.currency,
-            method: line.method,
             insured_amount: line.insured_amount === '' ? null : yuan2fen(line.insured_amount),
             insured_currency: line.insured_amount === '' ? null : line.insured_currency,
           })),
@@ -113,6 +113,7 @@ export default function ShipmentDetailPage({ id }) {
       setShipment(updated)
       setTotal(fen2yuan(updated.total_paid_eur_cents))
       setFx(String(updated.fx_cny_eur))
+      setCostMethod(updated.cost_method || 'BY_VALUE')
       setLines(toLines(updated.costs))
       setSelected(new Set(updated.orders.map((o) => o.id)))
       setSaved(true)
@@ -201,6 +202,13 @@ export default function ShipmentDetailPage({ id }) {
               </button>
             </div>
           </div>
+          <div className="field">
+            <label>Repartir el coste total</label>
+            <select value={costMethod} onChange={(e) => setCostMethod(e.target.value)}>
+              <option value="BY_VALUE">Por valor de las cartas</option>
+              <option value="BY_QUANTITY">Por cantidad de cartas</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -212,7 +220,6 @@ export default function ShipmentDetailPage({ id }) {
               <th>Categoría</th>
               <th>Importe</th>
               <th>Moneda</th>
-              <th>Reparto</th>
               <th>Seguro (cobertura)</th>
               <th></th>
             </tr>
@@ -250,18 +257,6 @@ export default function ShipmentDetailPage({ id }) {
                       {CURRENCIES.map((currency) => (
                         <option key={currency} value={currency}>
                           {currency}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <select
-                      value={line.method}
-                      onChange={(e) => updateLine(index, { method: e.target.value })}
-                    >
-                      {METHODS.map((method) => (
-                        <option key={method} value={method}>
-                          {method}
                         </option>
                       ))}
                     </select>

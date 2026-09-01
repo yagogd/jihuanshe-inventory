@@ -136,6 +136,7 @@ class ShipmentIn(BaseModel):
     total_paid_eur_cents: int = 0
     fx_cny_eur: float | None = None
     fx_source: str | None = None
+    cost_method: AllocationMethod = AllocationMethod.BY_VALUE
     costs: list[ShipmentCostIn] = []
 
 
@@ -147,6 +148,7 @@ class ShipmentOut(BaseModel):
     total_paid_eur_cents: int
     fx_cny_eur: float
     fx_source: str
+    cost_method: AllocationMethod
     created_at: datetime
     costs: list[ShipmentCostOut]
     orders: list[OrderOut]
@@ -220,6 +222,7 @@ class InventoryLotOut(BaseModel):
     quantity: int
     available: int
     unit_cost_eur_cents: int | None = None
+    unit_cost_cny_fen: int | None = None
     note: str | None = None
     order_id: str | None = None
     seller: str | None = None
@@ -343,6 +346,21 @@ class CardPurchaseOut(BaseModel):
     fx_cny_eur: float
     condition: str | None
     image_path: str | None
+    order_name: str | None = None
+    order_status: str | None = None
+    express_company: str | None = None
+    express_tracking: str | None = None
+    shipment_id: str | None = None
+    purchase_cny_fen: int = 0
+    domestic_cny_fen: int = 0
+    alipay_cny_fen: int = 0
+    cny_eur_cents: int = 0
+    shipment_alloc_cents: dict[str, int] = {}
+    shipment_eur_cents: int = 0
+    landed_eur_cents: int = 0
+    unit_landed_eur_cents: int = 0
+    allocation_method: AllocationMethod = AllocationMethod.BY_VALUE
+    shipment_allocation_method: AllocationMethod = AllocationMethod.BY_VALUE
 
 
 class CardLotOut(BaseModel):
@@ -352,6 +370,7 @@ class CardLotOut(BaseModel):
     unit_cost_eur_cents: int | None
     condition: str | None
     image_path: str | None
+    order_item_id: str | None = None
 
 
 class CardDetailOut(CardOut):
