@@ -58,6 +58,42 @@ def test_receive_is_idempotent():
         assert lots[0]["quantity"] == 2
 
 
+def test_same_card_from_different_orders_is_consolidated_and_listable():
+    with TestClient(app) as client:
+        order_ids = []
+        for quantity, price in ((3, 1100), (1, 2000)):
+            response = client.post("/api/orders", json={
+                "seller": "s",
+                "items": [{
+                    "raw_name": "Moneda SFD",
+                    "game": "Runeterra",
+                    "set_code": "SFD",
+                    "collector_number": "T03",
+                    "quantity": quantity,
+                    "unit_price_fen": price,
+                }],
+            })
+            assert response.status_code == 201, response.text
+            order_ids.append(response.json()["id"])
+        for order_id in order_ids:
+            _receive(client, order_id)
+
+        lots = client.get("/api/inventory", params={"q": "Moneda SFD"}).json()
+        assert len(lots) == 1
+        assert lots[0]["quantity"] == 4
+        assert lots[0]["available"] == 4
+        assert lots[0]["unit_cost_eur_cents"] == 172
+
+        listing = client.post("/api/listings", json={
+            "lot_id": lots[0]["id"],
+            "quantity": 4,
+            "unit_price_eur_cents": 500,
+            "marketplace": "CARDMARKET",
+        })
+        assert listing.status_code == 201, listing.text
+        assert listing.json()["quantity"] == 4
+
+
 def test_split_and_movement_validation():
     with TestClient(app) as client:
         order_id = _create_order(client, "InventarioGamma", 1)
@@ -117,12 +153,13 @@ def test_manual_add_without_order():
         assert listing[0]["source"] == "MANUAL"
 
 
-def test_manual_add_requires_identity():
+def test_manual_add_does_not_require_catalog_identity():
     with TestClient(app) as client:
         response = client.post(
             "/api/inventory", json={"name_zh": "Sin set", "quantity": 1, "amount": 100}
         )
-        assert response.status_code == 422
+        assert response.status_code == 201, response.text
+        assert response.json()["name"] == "Sin set"
 
 
 def test_update_order_keeps_lots():
@@ -257,3 +294,17 @@ def test_delete_manual_inventory_lot():
         assert deleted.status_code == 204, deleted.text
         assert client.get("/api/inventory", params={"q": "Delete Manual Lot"}).json() == []
 
+
+def test_manual_inventory_only_requires_a_name():
+    with TestClient(app) as client:
+        created = client.post("/api/inventory", json={"name_en": "Loose Manual Card"})
+        assert created.status_code == 201, created.text
+        body = created.json()
+        assert body["name"] == "Loose Manual Card"
+        assert body["set_code"] is None
+        assert body["collector_number"] is None
+        assert body["quantity"] == 1
+
+        missing_name = client.post("/api/inventory", json={})
+        assert missing_name.status_code == 422
+        assert "nombre" in missing_name.json()["detail"].lower()

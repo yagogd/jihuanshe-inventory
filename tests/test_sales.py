@@ -75,6 +75,27 @@ def test_listing_sell_marks_sold():
         assert match["quantity"] == 0
 
 
+def test_same_card_can_be_active_in_multiple_overlapping_listings():
+    with TestClient(app) as client:
+        order_id = _order(client, "VentaSolapada", 2)
+        _receive(client, order_id)
+        lot = _lot(client, "VentaSolapada")
+
+        first = client.post("/api/listings", json={
+            "lot_id": lot["id"], "quantity": 2,
+            "unit_price_eur_cents": 300, "marketplace": "CARDMARKET",
+        })
+        second = client.post("/api/listings", json={
+            "lot_id": lot["id"], "quantity": 2,
+            "unit_price_eur_cents": 350, "marketplace": "CARDMARKET",
+        })
+
+        assert first.status_code == 201, first.text
+        assert second.status_code == 201, second.text
+        assert first.json()["quantity"] + second.json()["quantity"] == 4
+        assert lot["available"] == 2
+
+
 def test_edit_sale_updates_values_and_inventory():
     with TestClient(app) as client:
         order_id = _order(client, "VentaEditable", 3)

@@ -23,6 +23,10 @@ from app.domain.models import (
 
 
 def _snapshot(db: Session, lot: InventoryLot) -> tuple[int, str]:
+    if len(lot.sources) > 1:
+        return lot.unit_cost_eur_cents or 0, json.dumps(
+            {"consolidated_sources": len(lot.sources)}, ensure_ascii=False
+        )
     if lot.order_item is None:
         return lot.unit_cost_eur_cents or 0, "{}"
     item = lot.order_item
@@ -80,15 +84,6 @@ def create_listing(
     if quantity <= 0 or quantity > lot.available:
         raise InventoryError("Cantidad inválida")
     marketplace = (marketplace or "OTHER").strip().upper()
-    duplicate = db.scalar(
-        select(Listing).where(
-            Listing.lot_id == lot.id,
-            Listing.marketplace == marketplace,
-            Listing.status == ListingStatus.ACTIVE,
-        )
-    )
-    if duplicate is not None:
-        raise InventoryError("Ya existe un anuncio activo en ese marketplace")
     listing = Listing(
         lot_id=lot.id, quantity=quantity,
         unit_price_eur_cents=unit_price_eur_cents, marketplace=marketplace,
@@ -108,16 +103,6 @@ def update_listing(
     if quantity <= 0 or quantity > listing.lot.available:
         raise InventoryError(f"Cantidad inválida (1..{listing.lot.available})")
     marketplace = (marketplace or "OTHER").strip().upper()
-    duplicate = db.scalar(
-        select(Listing).where(
-            Listing.lot_id == listing.lot_id,
-            Listing.marketplace == marketplace,
-            Listing.status == ListingStatus.ACTIVE,
-            Listing.id != listing.id,
-        )
-    )
-    if duplicate is not None:
-        raise InventoryError("Ya existe un anuncio activo en ese marketplace")
     listing.quantity = quantity
     listing.unit_price_eur_cents = unit_price_eur_cents
     listing.marketplace = marketplace

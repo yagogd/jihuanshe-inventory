@@ -219,6 +219,9 @@ class OrderItem(Base):
     lots: Mapped[list["InventoryLot"]] = relationship(
         back_populates="order_item", cascade="all, delete-orphan"
     )
+    lot_sources: Mapped[list["InventoryLotSource"]] = relationship(
+        back_populates="order_item", cascade="all, delete-orphan"
+    )
 
     @property
     def name_en(self) -> str | None:
@@ -345,6 +348,25 @@ class InventoryLot(Base):
     listings: Mapped[list["Listing"]] = relationship(
         back_populates="lot", cascade="all, delete-orphan"
     )
+    sources: Mapped[list["InventoryLotSource"]] = relationship(
+        back_populates="lot", cascade="all, delete-orphan"
+    )
+
+
+class InventoryLotSource(Base):
+    """Purchase lines contributing stock and cost to a consolidated lot."""
+
+    __tablename__ = "inventory_lot_sources"
+    __table_args__ = (UniqueConstraint("order_item_id", name="uq_inventory_lot_source_item"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    lot_id: Mapped[str] = mapped_column(String(36), ForeignKey("inventory_lots.id"), index=True)
+    order_item_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("order_items.id"), index=True
+    )
+
+    lot: Mapped["InventoryLot"] = relationship(back_populates="sources")
+    order_item: Mapped["OrderItem"] = relationship(back_populates="lot_sources")
 
 
 class LotMovement(Base):

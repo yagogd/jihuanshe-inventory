@@ -9,6 +9,22 @@ const DEFAULT_MARKETPLACES = [
   { code: 'WALLAPOP', name: 'Wallapop' },
 ]
 
+function normalizeSearch(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+}
+
+function matchesSearch(query, values) {
+  const tokens = normalizeSearch(query).split(/\s+/).filter(Boolean)
+  if (!tokens.length) return true
+  const haystack = normalizeSearch(values.join(' '))
+  return tokens.every((token) => haystack.includes(token))
+}
+
 const emptyForm = () => ({
   lot_id: '', quantity: '1',
   markets: { CARDMARKET: true, EBAY: true, WALLAPOP: false },
@@ -50,20 +66,17 @@ export default function SalesPage() {
 
   useEffect(load, [])
 
-  const publishedLotIds = useMemo(() => new Set(
-    (listings || []).filter((listing) => ['ACTIVE', 'NEEDS_REMOVAL'].includes(listing.status))
-      .map((listing) => listing.lot_id)
-  ), [listings])
-  const unpublishedLots = lots.filter((lot) => !publishedLotIds.has(lot.id))
-  const collections = [...new Set(unpublishedLots.map((lot) => lot.set_code).filter(Boolean))]
+  const selectableLots = lots
+  const collections = [...new Set(selectableLots.map((lot) => lot.set_code).filter(Boolean))]
     .sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }))
 
   const matches = useMemo(() => {
-    const query = unpublishedQuery.trim().toLowerCase()
-    const filtered = unpublishedLots.filter((lot) => {
+    const filtered = selectableLots.filter((lot) => {
       const matchesCollection = !collectionFilter || lot.set_code === collectionFilter
-      const matchesQuery = !query || [lot.name, lot.name_en, lot.set_code, lot.collector_number]
-        .some((value) => String(value || '').toLowerCase().includes(query))
+      const matchesQuery = matchesSearch(
+        unpublishedQuery,
+        [lot.name, lot.name_en, lot.set_code, lot.collector_number],
+      )
       return matchesCollection && matchesQuery
     })
     return filtered.sort((a, b) => {
@@ -76,14 +89,16 @@ export default function SalesPage() {
       }
       return String(a.name_en || a.name).localeCompare(String(b.name_en || b.name), 'es', { numeric: true })
     }).slice(0, 12)
-  }, [unpublishedLots, collectionFilter, unpublishedSort, unpublishedQuery])
+  }, [selectableLots, collectionFilter, unpublishedSort, unpublishedQuery])
 
   const selectedLot = lots.find((lot) => lot.id === form.lot_id)
   const bundleSuggestions = lots.filter((lot) => {
-    const query = unpublishedQuery.trim().toLowerCase()
     return !bundleForm.items.some((item) => item.lot_id === lot.id)
       && (!collectionFilter || lot.set_code === collectionFilter)
-      && (!query || [lot.name, lot.name_en, lot.set_code, lot.collector_number].some((value) => String(value || '').toLowerCase().includes(query)))
+      && matchesSearch(
+        unpublishedQuery,
+        [lot.name, lot.name_en, lot.set_code, lot.collector_number],
+      )
   }).sort((a, b) => {
     if (unpublishedSort === 'cost_desc') return (b.unit_cost_eur_cents ?? -1) - (a.unit_cost_eur_cents ?? -1)
     if (unpublishedSort === 'cost_asc') return (a.unit_cost_eur_cents ?? Infinity) - (b.unit_cost_eur_cents ?? Infinity)
@@ -96,9 +111,10 @@ export default function SalesPage() {
     .map((listing) => ({ bundle, listing })))
   const visibleListings = (listings || []).filter((listing) => ['ACTIVE', 'SOLD', 'NEEDS_REMOVAL'].includes(listing.status))
   const filteredListings = visibleListings.filter((listing) => {
-    const query = listingQuery.trim().toLowerCase()
-    const matchesQuery = !query || [listing.name, listing.name_en, listing.set_code, listing.collector_number]
-      .some((value) => String(value || '').toLowerCase().includes(query))
+    const matchesQuery = matchesSearch(
+      listingQuery,
+      [listing.name, listing.name_en, listing.set_code, listing.collector_number],
+    )
     return matchesQuery && (!marketFilter || listing.marketplace === marketFilter)
       && (!statusFilter || listing.status === statusFilter)
   }).sort((a, b) => {

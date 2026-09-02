@@ -36,6 +36,8 @@ def init_db() -> None:
     _backfill_cards()
     _repair_card_image_paths()
     _backfill_lots()
+    _backfill_lot_sources()
+    _consolidate_inventory_lots()
     _seed_cost_categories()
     _remap_legacy_costs()
 
@@ -97,6 +99,53 @@ def _migrate() -> None:
             "image_path": "VARCHAR",
         },
     )
+    inventory_lot_columns = {
+        col["name"]: col for col in inspect(engine).get_columns("inventory_lots")
+    }
+    if not inventory_lot_columns["order_item_id"].get("nullable", True):
+        # Early databases made order_item_id mandatory. Rebuild the SQLite
+        # table so manually entered stock can exist without a purchase order.
+        with engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE inventory_lots_nullable (
+                    id VARCHAR(36) NOT NULL PRIMARY KEY,
+                    order_item_id VARCHAR(36),
+                    card_id VARCHAR,
+                    source VARCHAR DEFAULT 'RECEIVE',
+                    quantity INTEGER NOT NULL,
+                    available INTEGER NOT NULL,
+                    amount INTEGER,
+                    currency VARCHAR,
+                    unit_cost_eur_cents INTEGER,
+                    condition VARCHAR,
+                    note VARCHAR,
+                    image_path VARCHAR,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY(order_item_id) REFERENCES order_items (id),
+                    FOREIGN KEY(card_id) REFERENCES cards (id)
+                )
+            """))
+            conn.execute(text("""
+                INSERT INTO inventory_lots_nullable (
+                    id, order_item_id, card_id, source, quantity, available,
+                    amount, currency, unit_cost_eur_cents, condition, note,
+                    image_path, created_at
+                )
+                SELECT
+                    id, order_item_id, card_id, source, quantity, available,
+                    amount, currency, unit_cost_eur_cents, condition, note,
+                    image_path, created_at
+                FROM inventory_lots
+            """))
+            conn.execute(text("DROP TABLE inventory_lots"))
+            conn.execute(text("ALTER TABLE inventory_lots_nullable RENAME TO inventory_lots"))
+            conn.execute(text(
+                "CREATE INDEX ix_inventory_lots_order_item_id "
+                "ON inventory_lots (order_item_id)"
+            ))
+            conn.execute(text(
+                "CREATE INDEX ix_inventory_lots_card_id ON inventory_lots (card_id)"
+            ))
     add_columns("listings", {"marketplace": "VARCHAR DEFAULT 'OTHER'"})
     add_columns("sales", {"bundle_id": "VARCHAR"})
     add_columns("marketplaces", {"enabled": "BOOLEAN DEFAULT 1"})
@@ -197,6 +246,33 @@ def _backfill_lots() -> None:
             if lot.source is None:
                 lot.source = m.LotSource.RECEIVE
         session.commit()
+
+
+def _backfill_lot_sources() -> None:
+    """Record the purchase line behind every legacy received inventory lot."""
+    from sqlalchemy import select
+
+    from app.domain import models as m
+
+    with SessionLocal() as session:
+        known = set(session.scalars(select(m.InventoryLotSource.order_item_id)))
+        lots = list(
+            session.scalars(
+                select(m.InventoryLot).where(m.InventoryLot.order_item_id.is_not(None))
+            )
+        )
+        for lot in lots:
+            if lot.order_item_id not in known:
+                session.add(m.InventoryLotSource(lot_id=lot.id, order_item_id=lot.order_item_id))
+        session.commit()
+
+
+def _consolidate_inventory_lots() -> None:
+    from app.domain.inventory import consolidate_inventory_lots
+
+    with SessionLocal() as session:
+        if consolidate_inventory_lots(session):
+            session.commit()
 
 
 def _seed_cost_categories() -> None:

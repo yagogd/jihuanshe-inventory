@@ -14,7 +14,19 @@ from app.domain.conditions import normalize_condition
 from app.domain.costs import compute_order_landed
 from app.domain.enums import LotSource, MovementKind, ShipmentStatus
 from app.domain.fx import convert_to_eur
-from app.domain.models import InventoryLot, LotMovement, Order, OrderItem, Shipment, ShipmentCost
+from app.domain.models import (
+    BundleItem,
+    Card,
+    InventoryLot,
+    InventoryLotSource,
+    Listing,
+    LotMovement,
+    Order,
+    OrderItem,
+    Sale,
+    Shipment,
+    ShipmentCost,
+)
 from app.domain.schemas import InventoryLotIn
 
 _MANUAL_KINDS = {MovementKind.SELL, MovementKind.GRADE}
@@ -45,7 +57,9 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
             if item.excluded_from_inventory:
                 continue
             existing = db.scalar(
-                select(InventoryLot).where(InventoryLot.order_item_id == item.id)
+                select(InventoryLot)
+                .join(InventoryLotSource)
+                .where(InventoryLotSource.order_item_id == item.id)
             )
             if existing is not None:
                 if existing.unit_cost_eur_cents is None:
@@ -63,20 +77,80 @@ def receive_shipment(db: Session, shipment: Shipment) -> list[InventoryLot]:
             lot.movements.append(
                 LotMovement(kind=MovementKind.RECEIVE, delta=item.quantity)
             )
+            lot.sources.append(InventoryLotSource(order_item=item))
             db.add(lot)
             created.append(lot)
+    db.flush()
+    consolidate_inventory_lots(db, {lot.card_id for lot in created if lot.card_id})
     db.commit()
     return created
 
 
+def consolidate_inventory_lots(db: Session, card_ids: set[str] | None = None) -> int:
+    """Combine compatible stock for one card and retain every purchase source."""
+    stmt = select(InventoryLot).options(
+        selectinload(InventoryLot.sources),
+        selectinload(InventoryLot.listings),
+    ).where(InventoryLot.card_id.is_not(None))
+    if card_ids:
+        stmt = stmt.where(InventoryLot.card_id.in_(card_ids))
+    lots = list(db.scalars(stmt))
+    groups: dict[tuple[str, str], list[InventoryLot]] = {}
+    for lot in lots:
+        # Manual stock and deliberate splits have no purchase-source mapping
+        # and must remain independent.
+        if not lot.sources:
+            continue
+        groups.setdefault((lot.card_id, lot.condition or ""), []).append(lot)
+
+    merged = 0
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        def is_referenced(lot: InventoryLot) -> bool:
+            return bool(
+                lot.listings
+                or db.scalar(select(Sale.id).where(Sale.lot_id == lot.id).limit(1))
+                or db.scalar(select(BundleItem.id).where(BundleItem.lot_id == lot.id).limit(1))
+            )
+
+        # Keep the lot already used by an announcement/bundle as the stable
+        # target, then absorb unreferenced stock from the other purchases.
+        group.sort(key=is_referenced, reverse=True)
+        target = group[0]
+        for donor in group[1:]:
+            if is_referenced(donor):
+                continue
+            combined_quantity = target.quantity + donor.quantity
+            target_value = (target.unit_cost_eur_cents or 0) * target.quantity
+            donor_value = (donor.unit_cost_eur_cents or 0) * donor.quantity
+            target.quantity = combined_quantity
+            target.available += donor.available
+            target.unit_cost_eur_cents = (
+                round((target_value + donor_value) / combined_quantity)
+                if combined_quantity
+                else 0
+            )
+            for source in list(donor.sources):
+                source.lot = target
+            db.delete(donor)
+            merged += 1
+    return merged
+
+
 def add_manual_lot(db: Session, payload: InventoryLotIn) -> InventoryLot:
+    name_zh = (payload.name_zh or "").strip() or None
+    name_en = (payload.name_en or "").strip() or None
+    if not name_zh and not name_en:
+        raise InventoryError("El nombre de la carta es obligatorio")
+
     card = resolve_card(
         db,
         game=payload.game,
         set_code=payload.set_code,
         collector_number=payload.collector_number,
-        raw_name=payload.name_zh,
-        name_en=payload.name_en,
+        raw_name=name_zh,
+        name_en=name_en,
         language=payload.language,
         variant=payload.variant,
         foil=payload.foil,
@@ -84,7 +158,20 @@ def add_manual_lot(db: Session, payload: InventoryLotIn) -> InventoryLot:
         image_path=payload.image_path,
     )
     if card is None:
-        raise InventoryError("Se necesita set y número para identificar la carta")
+        card = Card(
+            game=(payload.game or "").strip() or None,
+            set_code=(payload.set_code or "").strip() or None,
+            collector_number=(payload.collector_number or "").strip() or None,
+            name_zh=name_zh,
+            name_en=name_en,
+            language=(payload.language or "").strip() or None,
+            variant=(payload.variant or "").strip() or None,
+            foil=payload.foil,
+            promo=payload.promo,
+            image_path=payload.image_path,
+        )
+        db.add(card)
+        db.flush()
 
     quantity = payload.quantity if payload.quantity > 0 else 1
     total_eur = convert_to_eur(payload.amount, payload.currency.value, db)
@@ -154,6 +241,8 @@ def add_movement(db: Session, lot: InventoryLot, kind: MovementKind, quantity: i
 
 def current_lot_unit_cost(lot: InventoryLot) -> int | None:
     """Return the current landed unit cost for this exact inventory lot."""
+    if len(lot.sources) > 1:
+        return lot.unit_cost_eur_cents
     if lot.order_item is None or lot.order_item.order is None:
         return lot.unit_cost_eur_cents
     db = object_session(lot)
@@ -182,7 +271,7 @@ def lot_to_dict(lot: InventoryLot) -> dict:
     card = lot.card
     item = lot.order_item
 
-    name = card.name_zh if card and card.name_zh else None
+    name = card.name_zh if card and card.name_zh else (card.name_en if card else None)
     if not name and item:
         name = item.normalized_name or item.raw_name
     name_en = card.name_en if card else None
@@ -292,7 +381,7 @@ def list_inventory_entries(db: Session) -> list[dict]:
     )
     entries = [lot_to_dict(lot) for lot in lots]
 
-    received_item_ids = {lot.order_item_id for lot in lots if lot.order_item_id}
+    received_item_ids = set(db.scalars(select(InventoryLotSource.order_item_id)))
     items = list(
         db.scalars(
             select(OrderItem)
